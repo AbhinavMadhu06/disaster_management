@@ -114,7 +114,7 @@ class News_reporter(models.Model):
 
 
 class News(models.Model):
-    NEWS_REPORTER = models.ForeignKey(News_reporter, on_delete=models.CASCADE)
+    NEWS_REPORTER = models.ForeignKey(News_reporter, on_delete=models.CASCADE, null=True, blank=True)
     news = models.CharField(max_length=255)
     details = models.TextField()
     image = models.ImageField(upload_to='news_images/')
@@ -131,7 +131,7 @@ class Stock(models.Model):
 
 class Collection(models.Model):
     volunteer = models.ForeignKey(Volunteer, on_delete=models.CASCADE)
-    PUBLIC = models.ForeignKey(Public,on_delete=models.CASCADE,default='')
+    PUBLIC = models.ForeignKey(Public,on_delete=models.CASCADE, null=True, blank=True)
     type = models.CharField(max_length=200)
     details = models.TextField()
     quantity = models.IntegerField()
@@ -163,7 +163,7 @@ class EmergencyRescue(models.Model):
 
 
 class EmergencyAlert(models.Model):
-    PUBLIC = models.ForeignKey(Public,on_delete=models.CASCADE,default='')
+    PUBLIC = models.ForeignKey(Public,on_delete=models.CASCADE, null=True, blank=True)
     emergency_rescue = models.ForeignKey(EmergencyRescue, on_delete=models.CASCADE)
     alert = models.TextField()
     status = models.CharField(max_length=100)
@@ -211,7 +211,7 @@ class DonateGoods(models.Model):
         ('Collected', 'Collected'),
     ]
 
-    Public = models.ForeignKey(Public, on_delete=models.CASCADE,default='')
+    Public = models.ForeignKey(Public, on_delete=models.CASCADE, null=True, blank=True)
     volunteer = models.ForeignKey(Volunteer, on_delete=models.CASCADE)
     camp = models.ForeignKey(Camp, on_delete=models.CASCADE)
     item = models.CharField(max_length=255)
@@ -219,7 +219,7 @@ class DonateGoods(models.Model):
     status = models.CharField(max_length=20, default='Not Collected')
     date = models.DateField()
 class Chatbot(models.Model):
-    LOGIN=models.ForeignKey(User,on_delete=models.CASCADE,default='')
+    LOGIN=models.ForeignKey(User,on_delete=models.CASCADE, null=True, blank=True)
     date=models.DateField()
     question=models.TextField()
     answer=models.TextField()
