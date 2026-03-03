@@ -12,9 +12,9 @@ class GroupSerializer(serializers.ModelSerializer):
         model = Group
         fields = ['id', 'name']
 
-class AdminSerializer(serializers.ModelSerializer):
+class PublicSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Admin
+        model = Public
         fields = '__all__'
 
 class CoordinatorSerializer(serializers.ModelSerializer):
@@ -45,6 +45,11 @@ class ComplaintSerializer(serializers.ModelSerializer):
 class GuidelineSerializer(serializers.ModelSerializer):
     class Meta:
         model = Guideline
+        fields = '__all__'
+
+class News_reporterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = News_reporter
         fields = '__all__'
 
 class NewsSerializer(serializers.ModelSerializer):
@@ -92,7 +97,12 @@ class ServicesSerializer(serializers.ModelSerializer):
         model = Services
         fields = '__all__'
 
-class LoginSerializer(serializers.ModelSerializer):
+class DonateGoodsSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Login
+        model = DonateGoods
+        fields = '__all__'
+
+class ChatbotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Chatbot
         fields = '__all__'

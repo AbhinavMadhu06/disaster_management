@@ -13,13 +13,14 @@ from rest_framework_simplejwt.views import (
 
 router = routers.DefaultRouter()
 router.register(r'api/users', api_views.UserViewSet)
-router.register(r'api/admins', api_views.AdminViewSet)
+router.register(r'api/publics', api_views.PublicViewSet)
 router.register(r'api/coordinators', api_views.CoordinatorViewSet)
 router.register(r'api/camps', api_views.CampViewSet)
 router.register(r'api/volunteers', api_views.VolunteerViewSet)
 router.register(r'api/notifications', api_views.NotificationViewSet)
 router.register(r'api/complaints', api_views.ComplaintViewSet)
 router.register(r'api/guidelines', api_views.GuidelineViewSet)
+router.register(r'api/news-reporters', api_views.News_reporterViewSet)
 router.register(r'api/news', api_views.NewsViewSet)
 router.register(r'api/stocks', api_views.StockViewSet)
 router.register(r'api/collections', api_views.CollectionViewSet)
@@ -28,7 +29,8 @@ router.register(r'api/emergency-alerts', api_views.EmergencyAlertViewSet)
 router.register(r'api/needs', api_views.NeedsViewSet)
 router.register(r'api/medicines', api_views.MedicineViewSet)
 router.register(r'api/medical-requests', api_views.MedicalRequestViewSet)
-router.register(r'api/services', api_views.ServicesViewSet)
+router.register(r'api/donate-goods', api_views.DonateGoodsViewSet)
+router.register(r'api/chatbots', api_views.ChatbotViewSet)
 
 urlpatterns = [
     path('', lambda request: redirect('/myapp/')),  # root redirect

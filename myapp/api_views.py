@@ -9,10 +9,10 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
-class AdminViewSet(viewsets.ModelViewSet):
-    queryset = Admin.objects.all()
-    serializer_class = AdminSerializer
-    permission_classes = [IsAuthenticated]
+class PublicViewSet(viewsets.ModelViewSet):
+    queryset = Public.objects.all()
+    serializer_class = PublicSerializer
+    permission_classes = [AllowAny]
 
 class CoordinatorViewSet(viewsets.ModelViewSet):
     queryset = Coordinator.objects.all()
@@ -42,6 +42,11 @@ class ComplaintViewSet(viewsets.ModelViewSet):
 class GuidelineViewSet(viewsets.ModelViewSet):
     queryset = Guideline.objects.all()
     serializer_class = GuidelineSerializer
+    permission_classes = [AllowAny]
+
+class News_reporterViewSet(viewsets.ModelViewSet):
+    queryset = News_reporter.objects.all()
+    serializer_class = News_reporterSerializer
     permission_classes = [AllowAny]
 
 class NewsViewSet(viewsets.ModelViewSet):
@@ -84,7 +89,12 @@ class MedicalRequestViewSet(viewsets.ModelViewSet):
     serializer_class = MedicalRequestSerializer
     permission_classes = [IsAuthenticated]
 
-class ServicesViewSet(viewsets.ModelViewSet):
-    queryset = Services.objects.all()
-    serializer_class = ServicesSerializer
+class DonateGoodsViewSet(viewsets.ModelViewSet):
+    queryset = DonateGoods.objects.all()
+    serializer_class = DonateGoodsSerializer
+    permission_classes = [IsAuthenticated]
+
+class ChatbotViewSet(viewsets.ModelViewSet):
+    queryset = Chatbot.objects.all()
+    serializer_class = ChatbotSerializer
     permission_classes = [IsAuthenticated]

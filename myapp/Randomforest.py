@@ -32,12 +32,14 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
+import os
+from django.conf import settings
+
 # -------------------------------
 # Load dataset
 # -------------------------------
-df = pd.read_csv(
-    r'C:\Users\abhin\Downloads\untitled3\myapp\landslide_dataset.csv'
-)
+csv_path = os.path.join(settings.BASE_DIR, 'myapp', 'landslide_dataset.csv')
+df = pd.read_csv(csv_path)
 
 # -------------------------------
 # Split features and label
@@ -82,20 +84,20 @@ def random_forest(t1, t2, t3, t4, t5, t6, t7, t8, t9):
     return prediction[0], accuracy
 
 
-# -------------------------------
-# Test the function
-# -------------------------------
-pred, acc = random_forest(
-    161,
-    32.31153,
-    198.435,
-    0.007029638,
-    -0.012546,
-    9.089893,
-    4.396348,
-    3,
-    1.359568
-)
-
-print("Prediction:", pred)
-print("Model Accuracy:", acc)
+# # -------------------------------
+# # Test the function
+# # -------------------------------
+# pred, acc = random_forest(
+#     161,
+#     32.31153,
+#     198.435,
+#     0.007029638,
+#     -0.012546,
+#     9.089893,
+#     4.396348,
+#     3,
+#     1.359568
+# )
+# 
+# print("Prediction:", pred)
+# print("Model Accuracy:", acc)
