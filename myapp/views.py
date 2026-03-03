@@ -4,14 +4,14 @@ from django.shortcuts import render,redirect
 from .models import *
 from django.contrib import messages
 from django.contrib.auth.models import User,Group
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import make_password,check_password
 from django.contrib.auth import authenticate,login
 #new
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.views.decorators.csrf import csrf_exempt
 
 def root_redirect(request):
-    return redirect('login')  # redirects to /myapp/login/
+    return redirect('login')
 
 
 def login_get(request):
@@ -29,9 +29,9 @@ def loginpost(request):
             login(request,user)
             return redirect('/myapp/cordinator_home/')
         else:
-            return redirect('/myapp/')
+            return redirect('/myapp/login/')
     else:
-        return redirect('/myapp/')
+        return redirect('/myapp/login/')
 
 from django.shortcuts import redirect
 from django.contrib.auth import logout
@@ -657,9 +657,23 @@ def news(request):
     obj=News.objects.all()
     return render(request, 'admin/news.html',{'obj':obj})
 
+@login_required
+def admin_view_news_reporter(request):
+    a=News_reporter.objects.all()
+    return render(request,"admin/view news reporter.html",{"data":a})
 
-
-
+@login_required
+def accept_news_reporter(request,id):
+    a=News_reporter.objects.get(id=id)
+    a.status="accepted"
+    a.save()
+    return redirect('/myapp/admin_view_news_reporter/')
+@login_required
+def reject_news_reporter(request,id):
+    a=News_reporter.objects.get(id=id)
+    a.status="rejected"
+    a.save()
+    return redirect('/myapp/admin_view_news_reporter/')
 
 
 
@@ -675,7 +689,27 @@ def cordinator_home(request):
     if not request.user.groups.filter(name='cordinator').exists():
             logout(request)
             return redirect('/myapp/cordinator_home/')
-    return render(request, 'camp_cordinator/home_cord.html')
+    coordinator = get_object_or_404(Coordinator, login_id=request.user)
+    guid=Guideline.objects.filter(coordinator=coordinator)
+    guid_count=guid.count()
+    vol=Volunteer.objects.filter(coordinator=coordinator)
+    vol_count = vol.count()
+    stock=Stock.objects.filter(coordinator=coordinator)
+    stock_count = stock.count()
+    need = Needs.objects.filter(coordinator=coordinator, status="Pending")
+    need_count = need.count()
+    res = Medicine.objects.filter(coordinator=coordinator, status="Pending")
+    res_count = res.count()
+    rep=Notification.objects.all()
+    rep_count=rep.count()
+    return render(request, 'camp_cordinator/home_cord.html',
+                    {'guid_count':guid_count,
+                     'vol_count':vol_count,
+                     'stock_count':stock_count,
+                     'need_count':need_count,
+                     'res_count':res_count,
+                     'rep_count':rep_count,
+                     })
 
 def medical_support(request):
     if not request.user.groups.filter(name='cordinator').exists():
@@ -829,7 +863,9 @@ def stock_management_post(request):
     if request.method=='POST':
         type=request.POST['type']
         count=request.POST['count']
-        date = datetime.today().date()
+
+        from datetime import datetime
+        date = datetime.today()
         coordinator = Coordinator.objects.get(login_id=request.user)
 
         obj=Stock()
@@ -846,6 +882,7 @@ def stock_management_post(request):
     return render(request,'camp_cordinator/add_stock.html')
 
 def edit_stock(request, id):
+    request.session['sid']=id
     if not request.user.groups.filter(name='cordinator').exists():
             logout(request)
             return redirect('/myapp/cordinator_home/')
@@ -856,7 +893,7 @@ def edit_stock(request, id):
         date = datetime.today().date()
         coordinator = Coordinator.objects.get(login_id=request.user)
 
-        obj=Stock()
+        obj=Stock.objects.get(id=request.session['sid'])
         obj.type=type
         obj.count=count
         obj.date=date
@@ -869,17 +906,24 @@ def edit_stock(request, id):
         return redirect('stock_management')
     return render(request,'camp_cordinator/edit_stock.html',{'obj':obj})
 
-def delete_stock(request, id):
-    if not request.user.groups.filter(name='cordinator').exists():
-            logout(request)
-            return redirect('/myapp/cordinator_home/')
-    stock = get_object_or_404 (Stock ,id=id)
-    no=stock.count
-    item=stock.type
-    stock.delete()
-    messages.success(request, f'"{no}" "{item}" added successfully')
-    return redirect('stock_management')
 
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+
+
+def delete_stock(request, id):
+    # Security check
+    if not request.user.groups.filter(name='cordinator').exists():
+        return redirect('stock_management')
+
+    stock = get_object_or_404(Stock, id=id)
+    count = stock.count
+    item_name = stock.type
+
+    stock.delete()
+
+    messages.success(request, f'Stock item "{item_name}" ({count} units) has been deleted.')
+    return redirect('stock_management')
 
 def manage_needs(request):
     if not request.user.groups.filter(name='cordinator').exists():
@@ -898,7 +942,7 @@ def manage_needs_post(request):
         type=request.POST['type']
         description=request.POST['description']
         count=request.POST['count']
-        date = datetime.today().date()
+        date = datetime.datetime.today().date()
         coordinator = Coordinator.objects.get(login_id=request.user)
 
         obj=Needs()
@@ -991,11 +1035,15 @@ def news_report(request):
     return render(request, 'camp_cordinator/news_report.html',{'obj':obj})
 
 
+def guid_cord_view(request):
+    # make sure the group name is correct in your project ('cordinator' vs 'coordinator')
+    if not request.user.is_authenticated or not request.user.groups.filter(name='cordinator').exists():
+        logout(request)
+        return redirect('/myapp/cordinator_home/')
 
-
-
-
-
+    coordinator = get_object_or_404(Coordinator, login_id=request.user)
+    guidelines = Guideline.objects.filter(coordinator=coordinator).order_by('-date')
+    return render(request, "camp_cordinator/guid_cord.html", {"guidelines": guidelines})
 
 
 
@@ -1016,42 +1064,1415 @@ def logincode(request):
     un = request.POST['username']
     pwd = request.POST['password']
     user=authenticate(username=un,password=pwd)
+    print(user,"####################")
     if user is not None:
-        if user.groups.filter(name='user').exists():
+        if user.groups.filter(name='public').exists():
             print("in user function")
-            data = {"task": "valid", "lid": user.id,"type":'user'}
+            data = {"task": "valid", "lid": user.id,"type":'public'}
             r = json.dumps(data)
             print(r)
-            return HttpResponse(r)
+            return JsonResponse(data)
         elif user.groups.filter(name='volunteer').exists():
             print("in volunteer function")
             data = {"task": "valid", "lid": user.id,"type":'volunteer'}
             r = json.dumps(data)
             print(r)
-            return HttpResponse(r)
-        elif user.groups.filter(name='emergency_response').exists():
+            return JsonResponse(data)
+        elif user.groups.filter(name='emergency_rescue').exists():
             print("in emergency_response function")
-            data = {"task": "valid", "lid": user.id,"type":'emergency_response'}
+            data = {"task": "valid", "lid": user.id,"type":'emergency_rescue'}
             r = json.dumps(data)
             print(r)
-            return HttpResponse(r)
+            return JsonResponse(data)
+        elif user.groups.filter(name='news_reporter').exists():
+            print("in news_reporter function")
+            data = {"task": "valid", "lid": user.id, "type": 'news_reporter'}
+            r = json.dumps(data)
+            print(r)
+            return JsonResponse(data)
 
         else:
             data = {"task": "invalid"}
             r = json.dumps(data)
             print(r)
-            return HttpResponse(r)
+            return JsonResponse(data)
+
+
+#==========vulenteer=============
+
+def volunteer_home(request):
+    user = request.user
+
+    try:
+        data = {}
+
+        volunteer = Volunteer.objects.get(login_id=user)
+        data['name'] = volunteer.name
+        data['camp'] = volunteer.Coordinator.Camp.name
+
+        return JsonResponse({"task": "success", "data": data})
+    except Volunteer.DoesNotExist:
+        return JsonResponse({"task": "failed", "error": "invalid_id"})
+
+
+def view_needs_volunteer(request):
+
+    volunteer = Volunteer.objects.get(login_id=request.user)
+
+    needs = Needs.objects.filter(coordinator=volunteer.coordinator)
+
+    data = [{
+        "id": n.id,
+        "type": n.type,
+        "description": n.description,
+        "count": n.count,
+        "date": str(n.date) if n.date else None,
+        "status": n.status
+    } for n in needs]
+
+    return JsonResponse({"task": "success", "data": data})
+
+def create_medical_request_volunteer(request):
+
+    volunteer = Volunteer.objects.get(login_id=request.user)
+
+    med_id = request.POST.get("medicine_id")
+
+    medicine = Medicine.objects.get(id=med_id)
+
+    mr = MedicalRequest.objects.create(
+        volunteer=volunteer,
+        medicine=medicine,
+        status="Pending"
+    )
+
+    return JsonResponse({
+        "task": "success",
+        "medical_request_id": mr.id
+    })
+
+def view_services_volunteer(request):
+
+    volunteer = Volunteer.objects.get(login_id=request.user)
+
+    services = Services.objects.filter(volunteer=volunteer)
+
+    data = [{
+        "id": s.id,
+        "servicetype": s.servicetype,
+        "details": s.details
+    } for s in services]
+
+    return JsonResponse({"task": "success", "data": data})
+
+def add_service_volunteer(request):
+
+    volunteer = Volunteer.objects.get(login_id=request.user)
+
+    servicetype = request.POST.get("servicetype")
+    details = request.POST.get("details")
+
+    s = Services.objects.create(
+        volunteer=volunteer,
+        servicetype=servicetype,
+        details=details
+    )
+
+    return JsonResponse({
+        "task": "success",
+        "service_id": s.id
+    })
+
+
+def chatbot_volunteer(request):
+
+    return JsonResponse({
+        "task": "success",
+        "reply": ""
+    })
+
+def view_donated_goods_volunteer(request):
+
+    donations = DonateGoods.objects.all()
+
+    data = [{
+        "id": d.id,
+        "item": d.item,
+        "quantity": d.quantity,
+        "status": d.status,
+        "date": str(d.date) if d.date else None
+    } for d in donations]
+
+    return JsonResponse({"task": "success", "data": data})
+
+def collect_donation(request):
+    volunteer = Volunteer.objects.get(login_id=request.user)
+
+    donation_id = request.POST.get("donation_id")
+
+    d = DonateGoods.objects.get(id=donation_id)
+    d.volunteer = volunteer
+    d.status = "Collected"
+    d.save()
+
+    return JsonResponse({"task": "success"})
+
+
+def news_reporter_registration(request):
+    name=request.POST["name"]
+    place=request.POST["place"]
+    post=request.POST["post"]
+    phone=request.POST["phone"]
+    chanelname=request.POST["chanelname"]
+    photo=request.FILES["photo"]
+    username=request.POST["username"]
+    password=request.POST["password"]
+    user = User.objects.create(username=username, password=make_password(password))
+    user.save()
+    user.groups.add(Group.objects.get(name='news_reporter'))
+    
+    a=News_reporter()
+    a.name=name
+    a.place=place
+    a.post=post
+    a.phone=phone
+    a.chanelname=chanelname
+    a.photo=photo
+    a.status='pending'
+    a.LOGIN=user
+    a.save()
+    return JsonResponse({"task": "success"})
+
+
+def add_news(request):
+    news=request.POST["news"]
+    details = request.POST["details"]
+    image = request.FILES["image"]
+    date=request.POST["date"]
+    lid=request.POST["lid"]
+
+    a=News()
+    a.news=news
+    a.details=details
+    a.image=image
+    a.date=date
+    a.NEWS_REPORTER=News_reporter.objects.get(LOGIN_id=lid)
+    a.save()
+    return JsonResponse({"task": "success"})
+
+
+def view_news(request):
+    lid=request.POST["lid"]
+    a=News.objects.filter(NEWS_REPORTER__LOGIN_id=lid)
+    l=[]
+    for i in a:
+        l.append({"id":i.id,"news":i.news,"details":i.details,"date":i.date,"image":i.image.url})
+    return JsonResponse({"task": "success", "data": l})
+
+
+@csrf_exempt
+def edit_news(request):
+    # Pass the news ID from Flutter to identify which record to update
+    nid = request.POST["nid"]
+    news = request.POST["news"]
+    details = request.POST["details"]
+    date = request.POST["date"]
+
+    a = News.objects.get(id=nid)
+    a.news = news
+    a.details = details
+    a.date = date
+
+    # Only update image if a new one is provided
+    if 'image' in request.FILES:
+        a.image = request.FILES["image"]
+
+    a.save()
+    return JsonResponse({"task": "success"})
+
+
+@csrf_exempt
+def delete_news(request):
+
+    news_id = request.POST["nid"]
+
+    try:
+        a = News.objects.get(id=news_id)
+        a.delete()
+        return JsonResponse({"task": "success"})
+    except News.DoesNotExist:
+        return JsonResponse({"task": "failed", "error": "News not found"})
+
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import News_reporter
+
+
+@csrf_exempt  # Required if you are not sending a CSRF token from Flutter
+def reporter_view_profile(request):
+    if request.method == "POST":
+        try:
+            lid = request.POST.get("lid")
+
+
+            a = News_reporter.objects.get(LOGIN_id=lid)
+
+            photo_url = request.build_absolute_uri(a.photo.url) if a.photo else ""
+
+            return JsonResponse({
+                "status": "success",
+                "name": a.name,
+                "place": a.place,
+                "post": a.post,
+                "phone": a.phone,
+                "chanelname": a.chanelname,
+                "photo": photo_url
+            })
+
+        except News_reporter.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Reporter not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+    return JsonResponse({"status": "error", "message": "Invalid request method"}, status=400)
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+# Replace 'User' with your actual model name if it's different (e.g., Login)
+from .models import User
+
+
+from django.contrib.auth.models import User # Or your custom model
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+
+@csrf_exempt
+def user_change_password(request):
+    oldpassword = request.POST['oldpassword']
+    newpassword = request.POST['newpassword']
+    lid = request.POST['lid']
+
+    auth_user = User.objects.get(id=lid)
+    f = check_password(oldpassword, auth_user.password)
+    if f:
+        auth_user.set_password(newpassword)
+        auth_user.save()
+        return JsonResponse({'status': 'ok'})
+    else:
+        return JsonResponse({'status': 'failed'})
+
+##################################################################
+
+
+
+def public_view_news(request):
+    a=News.objects.all()
+    l=[]
+    for i in a:
+        l.append({"id":i.id,
+                  "news":i.news,
+                  "details":i.details,
+                  "date":i.date,
+                  "image":i.image.url,
+                  "news_reporter":i.NEWS_REPORTER.chanelname
+                  })
+    return JsonResponse({"status":"ok","data":l})
+
+def public_registration(request):
+    name=request.POST["name"]
+    phone=request.POST["phone"]
+    email=request.POST["email"]
+    photo=request.FILES["photo"]
+    username=request.POST["username"]
+    password=request.POST["password"]
+
+    if User.objects.filter(username=username).exists():
+        return JsonResponse({'msg':'username already exists'})
+
+
+    user = User.objects.create(username=username, password=make_password(password))
+    user.save()
+    user.groups.add(Group.objects.get(name='public'))
+
+    a=Public()
+    a.name=name
+    a.phone=phone
+    a.email=email
+    a.photo=photo
+    a.login_id=user
+    a.save()
+    return JsonResponse({"status":"ok"})
+
+
+from django.http import JsonResponse
+from .models import Public
+
+
+def public_view_profile(request):
+    if request.method == "POST":
+        try:
+            lid = request.POST.get("lid")
+            # Using get() is better to avoid MultiValueDictKeyError
+            if not lid:
+                return JsonResponse({"status": "error", "message": "LID is missing"})
+
+            a = Public.objects.get(login_id_id=lid)
+
+
+            photo_url = request.build_absolute_uri(a.photo.url) if a.photo else ""
+
+            return JsonResponse({
+                "status": "ok",
+                "name": a.name,
+                "phone": a.phone,
+                "email": a.email,
+                "photo": photo_url
+            })
+
+        except Public.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "User profile not found"})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)})
+
+    return JsonResponse({"status": "error", "message": "Invalid request method"})
+##########################################################################
+def volunteer_view_medicines(request):
+    a=Medicine.objects.all()
+    l=[]
+    for i in a:
+        l.append({"id":str(i.id),"medicine":i.medicine})
+    return JsonResponse({"status":"ok","data":l})
+
+
+
+
+
+
+
+@csrf_exempt
+def volunteer_view_needs(request):
+    if request.method == 'POST':
+        data = Needs.objects.all().order_by('-date')
+        l = []
+        for i in data:
+            l.append({
+                "id": str(i.id),
+                "type": i.type,
+                "description": i.description,
+                "count": i.count,
+                "date": str(i.date) if i.date else "",
+                "status": i.status,
+                "coordnator": i.coordinator.name if i.coordinator else "No Coordinator"
+            })
+        return JsonResponse({"status": "ok", "data": l})
+    return JsonResponse({"status": "error", "message": "Invalid request"})
+
+
+from django.http import JsonResponse
+
+def volunteer_view_donations(request):
+    try:
+        # Get volunteer login ID from the Flutter app
+        volunteer_lid = request.POST.get('lid')
+
+        # Filter donations assigned to this specific volunteer
+        donations = DonateGoods.objects.filter(volunteer__login_id=volunteer_lid).order_by('-date')
+
+        data_list = []
+        for d in donations:
+            # Default values if Public is missing
+            donor_data = {
+                "id": d.id,
+                "item": d.item,
+                "quantity": d.quantity,
+                "status": d.status,
+                "date": d.date.strftime("%d %b %Y"),
+                "camp_name": d.camp.name,
+                "donor_name": "Anonymous",
+                "donor_phone": "N/A",
+                "donor_email": "N/A",
+                "donor_photo": "",
+            }
+
+            # If Public relation exists, populate full details
+            if d.Public:
+                donor_data["donor_name"] = d.Public.name
+                donor_data["donor_phone"] = str(d.Public.phone)
+                donor_data["donor_email"] = d.Public.email
+                if d.Public.photo:
+                    # build_absolute_uri ensures the Flutter app gets the full URL (http://ip/media/...)
+                    donor_data["donor_photo"] = request.build_absolute_uri(d.Public.photo.url)
+
+            data_list.append(donor_data)
+
+        return JsonResponse({"status": "ok", "data": data_list})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)})
+
+def volunteer_view_profile(request):
+    lid=request.POST["lid"]
+    a=Volunteer.objects.get(login_id=lid)
+    return JsonResponse({"status":"ok","name":a.name,"email":a.email,"phone":a.phone,"place":a.place,"post":a.post,"pin":a.pin,"district":a.district,"age":a.age,"gender":a.gender,"coordinator":a.coordinator.name})
+
+def add_medical_support_vol(request):
+    lid=request.POST["lid"]
+    mid=request.POST["mid"]
+    a=MedicalRequest()
+    a.volunteer=Volunteer.objects.get(login_id=lid)
+    a.medicine_id=mid
+    a.status="pending"
+    a.save()
+    return JsonResponse({"status":"ok"})
+
+def view_medical_support_vol(request):
+    lid=request.POST["lid"]
+    a=MedicalRequest.objects.filter(volunteer__login_id=lid)
+    l=[]
+    for i in a:
+        l.append({"id":str(i.id),"medicine":i.medicine.medicine,"status":i.status})
+
+    return JsonResponse({"status":"ok","data":l})
+
+def add_services(request):
+    lid=request.POST["lid"]
+    servicetype=request.POST["servicetype"]
+    details=request.POST["details"]
+    a=Services()
+    a.servicetype=servicetype
+    a.details=details
+    a.volunteer=Volunteer.objects.get(login_id=lid)
+    a.save()
+    return JsonResponse({"status":"ok"})
+
+def volunteer_view_services(request):
+    lid=request.POST["lid"]
+    a=Services.objects.filter(volunteer__login_id=lid)
+    l=[]
+    for i in a:
+        l.append({"id":i.id,"servicetype":i.servicetype,"details":i.details})
+    return JsonResponse({"status":"ok","data":l})
+
+def volunteer_change_password(request):
+    oldpassword = request.POST['oldpassword']
+    newpassword = request.POST['newpassword']
+    lid = request.POST['lid']
+
+    auth_user = User.objects.get(id=lid)
+    f = check_password(oldpassword, auth_user.password)
+    if f:
+        auth_user.set_password(newpassword)
+        auth_user.save()
+        return JsonResponse({'status': 'ok'})
+    else:
+        return JsonResponse({'status': 'failed'})
+
+def view_donation_vol(request):
+    lid=request.POST["lid"]
+    a=DonateGoods.objects.filter(volunteer__login_id_id=lid)
+    l=[]
+    for i in a:
+        l.append({"id":i.id,"public":i.Public.name,"camp":i.camp.name,"quantity":i.quantity,"status":i.status})
+
+import json
+import google.generativeai as genai
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
+# Configure Google Gemini API
+GOOGLE_API_KEY = 'AIzaSyArUYYh7JuHdgw7rH_WnqsbR1_T9mWYsUQ'  # Replace with your actual API key
+genai.configure(api_key=GOOGLE_API_KEY)
+
+# Initialize Gemini Model
+model = genai.GenerativeModel('gemini-2.5-flash')
+
+
+@csrf_exempt
+# def chatbot_response(request):
+#     if request.method == 'POST':
+#         try:
+#             data = json.loads(request.body.decode('utf-8'))
+#
+#             user_message = data.get('message', '').strip()
+#             lid = data.get('lid')
+#
+#             if not user_message:
+#                 return JsonResponse({'response': 'Please enter a valid question.'})
+#
+#             if not lid:
+#                 return JsonResponse({'response': 'User ID missing in request'}, status=400)
+#
+#             usertable = User.objects.get(id=lid)
+#
+#             bot_response = model.generate_content(user_message).text.strip()
+#
+#             Chatbot.objects.create(
+#                 LOGIN=usertable,
+#                 date=datetime.now().today(),
+#                 question=user_message,
+#                 answer=bot_response
+#             )
+#
+#             return JsonResponse({'response': bot_response})
+#
+#         except User.DoesNotExist:
+#             return JsonResponse({'response': 'User not found'}, status=404)
+#
+#         except Exception as e:
+#             print(e)
+#             return JsonResponse({'response': str(e)}, status=500)
+#
+#     return JsonResponse({'response': 'Invalid method'}, status=405)
+#
+#
+# @csrf_exempt
+def chat_history(request):
+    try:
+        lid = request.GET.get('lid')
+
+        if not lid:
+            return JsonResponse({'response': 'User ID missing'}, status=400)
+
+        usertable = User.objects.get(id=lid)
+
+        chats = Chatbot.objects.filter(LOGIN=usertable).order_by('id')
+
+        history = [{"question": c.question, "answer": c.answer} for c in chats]
+
+        return JsonResponse(history, safe=False)
+
+    except Volunteer.DoesNotExist:
+        return JsonResponse({'response': 'User not found'}, status=404)
+#
+
+
+# Helper to fetch weather
+import json
+import requests
+import datetime
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import User, Chatbot  # Ensure these are imported correctly
+
+import json
+import requests
+import datetime
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import User, Chatbot
+import json
+import requests
+import datetime
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import User, Chatbot
+
+
+
+@csrf_exempt
+def chatbot_response(request):
+    if request.method != 'POST':
+        return JsonResponse({'response': 'Invalid request method'}, status=405)
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+
+        # 🔹 Data from Flutter
+        user_message = data.get('message', '').strip()
+        lid = data.get('lid')
+        lat = data.get('lat')
+        lon = data.get('lon')
+        weather = data.get('weather')  # 👈 coming from Flutter (Open-Meteo)
+
+        if not user_message or not lid:
+            return JsonResponse(
+                {'response': 'Message or user ID missing'},
+                status=400
+            )
+
+        # 🔹 Format weather text if available
+        weather_text = ""
+        if weather:
+            temp = weather.get('temperature_2m')
+            wind = weather.get('wind_speed_10m')
+            code = weather.get('weather_code')
+
+            weather_text = (
+                f"Current weather details:\n"
+                f"Temperature: {temp}°C\n"
+                f"Wind Speed: {wind} m/s\n"
+                f"Weather Code: {code}\n"
+            )
+
+        # 🔹 AI prompt
+        system_prompt = f"""
+You are a Disaster Management AI Assistant.
+
+User Location:
+Latitude: {lat}
+Longitude: {lon}
+
+{weather_text}
+
+User Question:
+{user_message}
+
+Give a helpful, clear response.
+"""
+
+        # 🔹 AI response (Gemini / LLM)
+        try:
+            bot_response = model.generate_content(system_prompt).text.strip()
+        except Exception as ai_error:
+            print("AI Error:", ai_error)
+            bot_response = "I am currently unable to respond. Please try again later."
+
+        # 🔹 Save chat
+        user_obj = User.objects.get(id=lid)
+        Chatbot.objects.create(
+            LOGIN=user_obj,
+            date=datetime.date.today(),
+            question=user_message,
+            answer=bot_response,
+            latitude=str(lat),
+            longitude=str(lon)
+        )
+
+        return JsonResponse({'response': bot_response})
+
+    except Exception as e:
+        print("Server Error:", e)
+        return JsonResponse(
+            {'response': 'Internal server error'},
+            status=500
+        )
+
+
+import json
+from django.http import JsonResponse
+from datetime import datetime
+from .models import User, Chatbot
+
+
+def public_chatbot_response(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+
+            user_message = data.get('message', '').strip()
+            lid = data.get('lid')
+
+            # These are received automatically from the Flutter location logic
+            lat = data.get('latitude', '0')
+            lon = data.get('longitude', '0')
+
+            # Fetch user
+            usertable = User.objects.get(id=lid)
+
+            # Enhanced prompt so AI knows the weather context for that location
+            enhanced_prompt = (
+                f"The user is at Latitude: {lat}, Longitude: {lon}. "
+                f"User Question: {user_message}. "
+                "Please provide relevant info or weather updates for this location if requested."
+            )
+
+            # AI response logic (Call your Gemini/Model here)
+            # Example: bot_response = model.generate_content(enhanced_prompt).text
+            bot_response = "AI logic here. Use lat/lon for weather."
+
+            # Create Database Entry
+            Chatbot.objects.create(
+                LOGIN=usertable,
+                date=datetime.now().date(),
+                question=user_message,
+                answer=bot_response,
+                latitude=lat,
+                longitude=lon
+            )
+
+            return JsonResponse({'response': bot_response})
+
+        except User.DoesNotExist:
+            return JsonResponse({'response': 'User not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'response': str(e)}, status=500)
+
+    return JsonResponse({'response': 'Invalid method'}, status=405)
+
+
+def public_chat_history(request):
+    try:
+        lid = request.GET.get('lid')
+        if not lid:
+            return JsonResponse({'response': 'User ID missing'}, status=400)
+
+        usertable = User.objects.get(id=lid)
+        chats = Chatbot.objectms.filter(LOGIN=usertable).order_by('id')
+
+        # Returning history to Flutter
+        history = [{"question": c.question, "answer": c.answer} for c in chats]
+        return JsonResponse(history, safe=False)
+
+    except User.DoesNotExist:
+        return JsonResponse({'response': 'User not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'response': str(e)}, status=500)
+def public_send_complaint(request):
+    complaint=request.POST['complaint']
+    lid=request.POST['lid']
+    a=Complaint()
+    a.complaint=complaint
+    a.date=datetime.datetime.now().today()
+    a.reply='pending'
+    a.login_id=User.objects.get(id=lid)
+    a.save()
+    return JsonResponse({'status': 'ok'})
+
+def public_view_reply(request):
+    lid=request.POST['lid']
+    a=Complaint.objects.filter(login_id=lid)
+    l=[]
+    for i in a:
+        l.append({"id":str(i.id),"complaint":i.complaint,"reply":i.reply,"date":str(i.date)})
+    return JsonResponse({"status":"ok","data":l})
+
+
+def er_view_profile(request):
+    lid=request.POST['lid']
+    a=EmergencyRescue.objects.get(login_id=lid)
+    return JsonResponse({"status":"ok",
+                         "name":a.name,
+                         "email":a.email,
+                         "phone":a.phone,
+                         "place":a.place,
+                         "district":a.district,
+                         "post":a.post,
+                         "pin":a.pin,
+                         "role":a.role,
+                         "notes":a.notes
+                         })
+
+def er_change_password(request):
+    oldpassword = request.POST['oldpassword']
+    newpassword = request.POST['newpassword']
+    lid = request.POST['lid']
+
+    auth_user = User.objects.get(id=lid)
+    f = check_password(oldpassword, auth_user.password)
+    if f:
+        auth_user.set_password(newpassword)
+        auth_user.save()
+        return JsonResponse({'status': 'ok'})
+    else:
+        return JsonResponse({'status': 'failed'})
+
+
+from django.http import JsonResponse
+from .models import EmergencyAlert
+
+
+def view_user_reports(request):
+    alerts = EmergencyAlert.objects.all()
+    report_list = []
+    for item in alerts:
+        report_list.append({
+            "id": str(item.id),
+            "public": item.PUBLIC.name,
+            "alert": item.alert,
+            "latitude": item.latitude,
+            "longitude": item.longitude,
+        })
+    return JsonResponse({'status':'ok', "data":report_list})
+def emergency_request(request):
+    return JsonResponse({'status':'ok'})
+
+import json
+
+from django.views.decorators.csrf import csrf_exempt
+from .models import DonateGoods, Public, Volunteer, Camp
+import datetime
+
+@csrf_exempt
+def add_donation_api(request):
+    if request.method == "POST":
+        try:
+
+            user_login_id = request.POST.get('public_id')
+            camp_id = request.POST.get('camp_id')
+            volunteer_id = request.POST.get('volunteer_id')
+            item = request.POST.get('item')
+            quantity = request.POST.get('quantity')
+            date_str = request.POST.get('date')
+
+            try:
+                public_obj = Public.objects.get(login_id=user_login_id)
+            except Public.DoesNotExist:
+                return JsonResponse({"status": "error", "message": "Public Profile not found for this user"})
+
+            camp_obj = Camp.objects.get(id=camp_id)
+            vol_obj = Volunteer.objects.get(id=volunteer_id)
+
+            DonateGoods.objects.create(
+                Public=public_obj,
+                volunteer=vol_obj,
+                camp=camp_obj,
+                item=item,
+                quantity=int(quantity),
+                date=date_str,
+                status='Not Collected'
+            )
+
+            return JsonResponse({"status": "ok", "message": "Donation added successfully!"})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)})
+    return JsonResponse({"status": "error", "message": "Invalid request method"})
+
+
+from django.http import JsonResponse
+from .models import DonateGoods
+
+
+def public_view_donations(request):
+    try:
+
+        user_login_id = request.GET.get('login_id')
+        donations = DonateGoods.objects.filter(
+            Public__login_id=user_login_id
+        ).select_related('camp', 'volunteer', 'Public').order_by('-date')
+
+        data_list = []
+        for d in donations:
+            data_list.append({
+                "id": d.id,
+                "item": d.item,
+                "quantity": d.quantity,
+                "status": d.status,
+                "date": d.date.strftime("%d %b %Y"),
+                "camp_name": d.camp.name,
+                "volunteer_name": d.volunteer.name,
+                "public_name": d.Public.name if d.Public else "Anonymous"
+            })
+
+        return JsonResponse({"status": "ok", "data": data_list})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)})
+
+from django.http import JsonResponse
+from .models import Camp, Volunteer
+
+def get_donation_metadata(request):
+    try:
+        camps = Camp.objects.all().values('id', 'name')
+        volunteers = Volunteer.objects.all().values('id', 'name')
+
+        return JsonResponse({
+            "status": "ok",
+            "camps": list(camps),
+            "volunteers": list(volunteers)
+        })
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)})
+
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from .models import DonateGoods
+
+
+@csrf_exempt
+def volunteer_update_donation_status(request):
+    if request.method == 'POST':
+        try:
+            donation_id = request.POST.get('donation_id')
+
+            # Retrieve the specific donation record
+            donation = DonateGoods.objects.get(id=donation_id)
+
+            # Update the status
+            donation.status = 'Collected'
+            donation.save()
+
+            return JsonResponse({"status": "ok", "message": "Status updated to Collected"})
+        except DonateGoods.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Donation record not found"})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)})
+    return JsonResponse({"status": "error", "message": "Invalid request method"})
+
+#
+# def get_predicttt(request):
+#     if request.method == 'POST':
+#         try:
+#
+#             lat = float(request.POST['lat'])
+#             lon = float(request.POST['lon'])
+#             distance_str = "1000"
+#
+#             # Get river data
+#             river_data = get_rivers_near_location(lat, lon)
+#             if "error" in river_data:
+#                 print(river_data["error"])
+#             else:
+#                 print(f"Rivers near location ({lat}, {lon}):")
+#                 for river in river_data:
+#                     if isinstance(river["distance_km"], (float, int)):
+#                         distance_str = float(river['distance_km'])
+#                         break
+#                     else:
+#                         distance_str = "Distance not available"
+#                         break
+#
+#             # Fetch elevation, soil type, and slope angle data
+#             elevation, soil_type, slope_angle = getmaindata(float(lat), float(lon))
+#             print(elevation, soil_type, slope_angle, distance_str)
+#
+#             if lat is None or lon is None:
+#                 return render(request,"camp_cordinator/result.html",{"val":"invalid"})
+#             # Fetch weather data
+#             api_url = f'https://api.weatherbit.io/v2.0/current?lat={lat}&lon={lon}&key={API_KEY}'
+#             response = requests.get(api_url)
+#             weather_data = response.json()
+#             print(weather_data)
+#
+#         except json.JSONDecodeError as e:
+#             print(e)
+#             return render(request, "camp_cordinator/result.html", {"val": "invalid"})
+#
+#             # return JsonResponse({'error': 'Invalid JSON'}, status=400)
+#
+#     # Load the KNN model
+#     # knn = joblib.load(r"C:\Users\USER\Downloads\landslide (1)\landslide\app\knn-model.joblib")
+#
+#     # Ensure the input data matches the expected dimensions
+#     try:
+#         # Adjust the row to have the correct number of features
+#         st = [
+#             'Fluvisols',
+#             'Andosols',
+#             'Arenosols',
+#             'Chernozem',
+#             'Gleysols',
+#             'Histosols',
+#             'Kastanozems',
+#             'Luvisols',
+#             'Nitisols',
+#             'Regosols',
+#             'Vertisols',
+#             'Solonchaks',
+#             'Podzols',
+#             'Alisols',
+#             'Cambisols',
+#             'Calcisols',
+#             'Phaeozems',
+#             'Acrisols',
+#             'Plinthosols'
+#         ]
+#         # try:
+#         #     row = [float(lat), float(lon), float(elevation), float(distance_str), float(slope_angle),weather_data['data'][0]['precip'],st.index(soil_type),weather_data['data'][0]['rh'],weather_data['data'][0]['rh']]  # Adjust as necessary
+#         # except:
+#         #     row = [float(lat), float(lon), float(elevation), float(distance_str), float(slope_angle),1,st.index(soil_type),1,1]  # Adjust as necessary
+#         # if len(row) != knn.n_features_in_:
+#         #     raise ValueError(f"Expected {knn.n_features_in_} features, but got {len(row)}")
+#
+#
+#
+#         from  myapp.Randomforest import random_forest
+#
+#         # Make the prediction
+#         # res = knn.predict([row])
+#
+#         try:
+#
+#             res=random_forest(float(lat), float(lon), float(elevation), float(distance_str), float(slope_angle),weather_data['data'][0]['precip'],st.index(soil_type),weather_data['data'][0]['rh'],weather_data['data'][0]['rh'])
+#             print(res, "++++++++++++++++++")
+#         except:
+#             res=random_forest(float(lat), float(lon), float(elevation), float(distance_str), float(slope_angle),1,st.index(soil_type),1,1)
+#
+#
+#
+#
+#         print(res,"jjjjjjj")
+#         if res[0] == "0":
+#             try:
+#                 return render(request,"camp_cordinator/result.html",{'status': 'ok', 'val': 'Non-landslide','weather_data':weather_data,'st':soil_type,'river':distance_str,'altitude':elevation,'rainfall':weather_data['data'][0]['precip'],'city_name':weather_data['data'][0]['city_name']})
+#             except:
+#                 return render(request,"camp_cordinator/result.html",{'status': 'ok', 'val': 'Non-landslide','weather_data':weather_data,'st':soil_type,'river':distance_str,'altitude':elevation,'rainfall':5,'city_name':""})
+#         else:
+#             try:
+#                 return HttpResponse({'status': 'not ok', 'val': 'Landslide','weather_data':weather_data,'st':soil_type,'river':distance_str,'altitude':elevation,'rainfall':weather_data['data'][0]['precip'],'city_name':weather_data['data'][0]['city_name']})
+#             except:
+#                 return HttpResponse({'status': 'not ok', 'val': 'Landslide','weather_data':weather_data,'st':soil_type,'river':distance_str,'altitude':elevation,'rainfall':5,'city_name':""})
+#
+#     except ValueError as e:
+#         print("Error in prediction:", str(e))
+#         return JsonResponse({'error': 'Prediction failed', 'details': str(e)}, status=500)
+
+from django.http import JsonResponse
+import requests
+from myapp.Randomforest import random_forest
+
+API_KEY = 'YOUR_WEATHERBIT_API_KEY'
+
+
+def api_get_predict(request):
+    """
+    API for Automated Prediction via Lat/Lon
+    URL Example: /api_get_predict/?lat=11.25&lon=75.3
+    """
+    try:
+        # 1. Capture Inputs
+        lat_val = request.GET.get('lat')
+        lon_val = request.GET.get('lon')
+
+        if not lat_val or not lon_val:
+            return JsonResponse({'status': 'error', 'message': 'Missing coordinates'}, status=400)
+
+        lat = float(lat_val)
+        lon = float(lon_val)
+        distance_str = 1000.0
+
+        # 2. Get River Data
+        try:
+            river_data = get_rivers_near_location(lat, lon)
+            if isinstance(river_data, list):
+                for river in river_data:
+                    if isinstance(river.get("distance_km"), (float, int)):
+                        distance_str = float(river['distance_km'])
+                        break
+        except Exception as e:
+            print(f"River Data Logic Error: {e}")
+
+        # 3. Fetch Elevation, Soil, and Slope
+        # NOTE: Ensure getmaindata always returns 3 values to avoid unpacking errors
+        elevation, soil_type, slope_angle = getmaindata(lat, lon)
+
+        # 4. Fetch Weather Data
+        precip, rh, city_name = 5.0, 1.0, "Unknown"
+        try:
+            api_url = f'https://api.weatherbit.io/v2.0/current?lat={lat}&lon={lon}&key={API_KEY}'
+            response = requests.get(api_url, timeout=5)
+            w_data = response.json()
+            if 'data' in w_data:
+                precip = w_data['data'][0].get('precip', 5.0)
+                rh = w_data['data'][0].get('rh', 1.0)
+                city_name = w_data['data'][0].get('city_name', "Unknown")
+        except Exception as e:
+            print(f"Weather API Error: {e}")
+
+        # 5. Soil Mapping
+        st_list = ['Fluvisols', 'Andosols', 'Arenosols', 'Chernozem', 'Gleysols', 'Histosols',
+                   'Kastanozems', 'Luvisols', 'Nitisols', 'Regosols', 'Vertisols',
+                   'Solonchaks', 'Podzols', 'Alisols', 'Cambisols', 'Calcisols',
+                   'Phaeozems', 'Acrisols', 'Plinthosols']
+
+        soil_idx = st_list.index(soil_type) if soil_type in st_list else 0
+
+        # 6. ML Prediction
+        try:
+            res = random_forest(lat, lon, elevation, distance_str, slope_angle, precip, soil_idx, rh, rh)
+        except:
+            res = random_forest(lat, lon, elevation, distance_str, slope_angle, 1, soil_idx, 1, 1)
+
+        # 7. Final Response
+        is_landslide = str(res[0]) != "0"
+        return JsonResponse({
+            'status': 'success',
+            'val': 'Landslide' if is_landslide else 'No-landslide',
+            'is_danger': is_landslide,
+            'details': {
+                'city': city_name,
+                'rainfall': precip,
+                'altitude': elevation,
+                'river_dist': distance_str,
+                'soil': soil_type
+            }
+        })
+
+    except Exception as e:
+        print(traceback.format_exc())  # Prints exact error line in your terminal
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+#
+# def predict(request):
+#     v1=request.form['textfield']
+#     v2=request.form['textfield2']
+#     v3=request.form['textfield3']
+#     v4=request.form['textfield4']
+#     v5=request.form['textfield5']
+#     v6=request.form['textfield6']
+#     v7=request.form['textfield7']
+#     v8=request.form['select']
+#     v9=request.form['textfield8']
+#     row=[float(v1),
+#          float(v2),
+#          float(v3),
+#          float(v4),
+#          float(v5),
+#          float(v6),
+#          float(v7),
+#          float(v8),
+#          float(v9)]
+#
+#
+#     from myapp.Randomforest import random_forest
+#
+#
+#     res=random_forest(float(v1),
+#          float(v2),
+#          float(v3),
+#          float(v4),
+#          float(v5),
+#          float(v6),
+#          float(v7),
+#          float(v8),
+#          float(v9))
+#
+#     # clf = RandomForestClassifier(n_estimators = 100)
+#     # clf.fit(X_train,y_train)
+#     # y_pred = clf.predict(X_test)
+#
+#
+#
+#
+#     # knn=joblib.load("knn-model.joblib")
+#     # res=knn.predict([row])
+#     # print(res,"++++++++++++++++++")
+#     if res[0]==0:
+#         return  render(request,"camp_cordinator/result.html",val="No-landslide")
+#     else:
+#         return render(request,"camp_cordinator/result.html", val="Landslide")
+
+
+from django.http import JsonResponse
+from myapp.Randomforest import random_forest
+
+def api_manual_predict(request):
+
+    try:
+
+        data = {
+            'elevation': request.GET.get('v1'), # v1
+            'slope':     request.GET.get('v2'), # v2
+            'aspect':    request.GET.get('v3'), # v3
+            'placurv':   request.GET.get('v4'), # v4
+            'procurv':   request.GET.get('v5'), # v5
+            'lsfactor':  request.GET.get('v6'), # v6
+            'twi':       request.GET.get('v7'), # v7
+            'geology':   request.GET.get('v8'), # v8
+            'sdoif':     request.GET.get('v9'), # v9
+        }
+
+        # 2. Validation: Ensure no parameter is missing or empty
+        for key, value in data.items():
+            if value is None or value.strip() == "":
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Missing parameter: {key} (v{list(data.keys()).index(key) + 1})'
+                }, status=400)
+
+
+        prediction = random_forest(
+            float(data['elevation']),
+            float(data['slope']),
+            float(data['aspect']),
+            float(data['placurv']),
+            float(data['procurv']),
+            float(data['lsfactor']),
+            float(data['twi']),
+            float(data['geology']),
+            float(data['sdoif'])
+        )
+
+
+        val_code = int(prediction[0])
+        prediction_text = "No-landslide" if val_code == 0 else "Landslide"
+
+        return JsonResponse({
+            'status': 'success',
+            'val': prediction_text,
+            'code': val_code
+        })
+
+    except ValueError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid input: All parameters must be numeric.'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+def api_view_requests(request):
+    lid=request.POST['lid']
+    a=EmergencyAlert.objects.filter(emergency_rescue__login_id_id=lid)
+    l=[]
+    for i in a:
+        l.append({"id":str(i.id),
+                  "alert":i.alert,
+                  "status":i.status,
+                  "latitude":i.latitude,
+                  "longitude":i.longitude,
+                  })
+    return JsonResponse({"status":"ok","data":l})
+
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import EmergencyAlert
+
+
+@csrf_exempt
+def api_update_alert_status(request):
+
+    if request.method == 'POST':
+        try:
+            alert_id = request.POST.get('alert_id')
+            new_status = request.POST.get('status')  # 'Accepted' or 'Rejected'
+
+            alert = EmergencyAlert.objects.get(id=alert_id)
+            alert.status = new_status
+            alert.save()
+
+            return JsonResponse({
+                "status": "ok",
+                "message": f"Alert has been {new_status.lower()}"
+            })
+        except EmergencyAlert.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Alert not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+    return JsonResponse({"status": "error", "message": "Invalid Request"}, status=400)
+
+
+from django.http import JsonResponse
+from .models import EmergencyRescue, Public, EmergencyAlert, User
+
+
+def public_view_rescue_teams(request):
+    try:
+        teams = EmergencyRescue.objects.filter(status='Varified')
+        data = []
+        for team in teams:
+            data.append({
+                'id': team.id,
+                'name': team.name,
+                'district': team.district,
+                'role': team.role,
+                'phone': team.phone,
+                'place': team.place,
+            })
+        return JsonResponse({"status": "ok", "data": data})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)})
+
+
+def public_send_emergency_request(request):
+    try:
+        lid = request.POST.get('lid')
+
+        alert_text = request.POST.get('alert', 'Automatic SOS Signal')
+        lat = request.POST.get('latitude')
+        lon = request.POST.get('longitude')
+        eid = request.POST.get('eid')
+
+
+        if not lid or not lat or not lon or not eid:
+            return JsonResponse({"status": "error", "message": "Incomplete location or user data"})
+
+        a = EmergencyAlert()
+
+        a.PUBLIC = Public.objects.get(login_id_id=lid)
+        a.alert = alert_text
+        a.latitude = lat
+        a.longitude = lon
+        a.status = 'pending'
+
+
+        a.emergency_rescue = EmergencyRescue.objects.get(id=eid)
+        a.save()
+
+        return JsonResponse({"status": "ok"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)})
+
+def public_view_needs(request):
+    a = Needs.objects.all()
+    l = []
+    for i in a:
         
+        camp = Camp.objects.filter(coordinator=i.coordinator).first()
+        l.append({
+            "id": i.id,
+            "coordinator": i.coordinator.name,
+            "camp_name": camp.name if camp else "General", # Added for Flutter auto-select
+            "type": i.type,
+            "description": i.description,
+            "count": i.count,
+            "date": i.date,
+            "status": i.status
+        })
+    return JsonResponse({"status": "ok", "data": l})
 
 
+@csrf_exempt
+def public_add_donation_from_need(request):
+    if request.method == "POST":
+        need_id = request.POST.get("need_id")
+        login_id = request.POST.get("login_id")  # Get current user
+        quantity = request.POST.get("quantity")
 
+        try:
+            need = Needs.objects.get(id=need_id)
+            public_user = Public.objects.get(login_id=login_id)
 
-def viewnews_flutter(request):
-    ob=News.objects.all()
-    print(ob,"HHHHHHHHHHHHHHH")
-    mdata=[]
-    for i in ob:
-        data={'news':i.news,'details':i.details,'phone':i.phone,'regno':i.regno,'email':i.email,'id':i.id}
-        mdata.append(data)
-        print(mdata)
-    return JsonResponse({"status":"ok","data":mdata})
+            # Find the camp associated with the coordinator who requested the need
+            camp = Camp.objects.get(coordinator=need.coordinator)
+
+            # Since the model requires a Volunteer, we can either:
+            # 1. Assign a default volunteer from that camp
+            # 2. Or modify your model to allow null volunteer until collected
+            volunteer = Volunteer.objects.filter(coordinator=need.coordinator).first()
+
+            DonateGoods.objects.create(
+                Public=public_user,
+                volunteer=volunteer,
+                camp=camp,
+                item=need.type,
+                quantity=quantity,
+                status='Not Collected',
+                date=datetime.date.today()
+            )
+            return JsonResponse({"status": "ok"})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)})
+
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def public_accept_need(request):
+    if request.method == "POST":
+        need_id = request.POST.get("need_id")
+        try:
+            need = Needs.objects.get(id=need_id)
+            need.status = "Resolved" # Or "Accepted" based on your preference
+            need.save()
+            return JsonResponse({"status": "ok", "message": "Need accepted successfully"})
+        except Needs.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Need not found"})
+
+@csrf_exempt
+def public_reject_need(request):
+    if request.method == "POST":
+        need_id = request.POST.get("need_id")
+        try:
+            need = Needs.objects.get(id=need_id)
+            need.status = "Rejected"
+            need.save()
+            return JsonResponse({"status": "ok", "message": "Need rejected successfully"})
+        except Needs.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Need not found"})
+
