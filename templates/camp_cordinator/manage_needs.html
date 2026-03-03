@@ -1,0 +1,234 @@
+{% extends "camp_cordinator/base.html" %}
+{% load static %}
+
+{% block title %}Manage Needs — Disaster Management{% endblock %}
+
+{% block head_extra %}
+<style>
+  :root{ --primary:#147efb; --accent:#6c5ce7; --bg:#f8fafc; --muted:#64748b; }
+  body{ background:var(--bg); color:#0f172a; font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial; }
+  .card{ background:#fff; border-radius:12px; padding:18px; box-shadow:0 8px 30px rgba(2,6,23,0.06); }
+  .controls{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  .search{ padding:10px 14px; border-radius:999px; border:1px solid #e6edf5; width:320px; }
+  .select{ padding:8px 12px; border-radius:10px; border:1px solid #e6edf5; background:#fff; }
+  .btn{ padding:8px 12px; border-radius:10px; border:1px solid #e6edf5; background:#fff; cursor:pointer; }
+  .btn-primary{ background:linear-gradient(90deg,var(--primary),var(--accent)); color:#fff; border:none; }
+  table{ width:100%; border-collapse:collapse; }
+  th,td{ padding:12px 10px; vertical-align:middle; font-size:14px; }
+  thead th{ text-align:left; font-weight:600; color:#475569; background:#fbfdff; }
+  tbody tr:hover{ background:#fbfbfd; }
+  .actions a,.actions button{ margin-right:8px; }
+  .status-tag{ padding:6px 8px; border-radius:999px; font-size:13px; display:inline-block; }
+  .status-Pending{ background:#fff4e6; color:#92400e; }
+  .status-Resolved{ background:#ecfeff; color:#065f46; }
+  .small-muted{ color:var(--muted); font-size:13px; }
+
+  /* Modal styles */
+  .overlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.25); z-index:60; }
+  .overlay.show{ display:flex; }
+  .confirm-box{ background:#fff; border-radius:12px; padding:20px; width:420px; max-width:92%; box-shadow:0 20px 60px rgba(2,6,23,0.18); text-align:center; }
+  .confirm-title{ font-weight:600; margin-bottom:8px; }
+  .confirm-text{ color:var(--muted); margin-bottom:18px; }
+  .confirm-actions{ display:flex; gap:10px; justify-content:center; }
+  @media(max-width:720px){ .search{ width:100%; } table{ font-size:13px; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="container px-6 py-8">
+  <section class="card">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <a href="{% url 'add_needs' %}" class="btn btn-primary">Add Need</a>
+        <span class="small-muted" style="margin-left:10px;">Manage needs for your camp</span>
+      </div>
+    </div>
+
+    <!-- controls -->
+    <div class="controls">
+      <input id="searchInput" class="search" placeholder="Search by type or description..." aria-label="Search needs">
+      <select id="statusFilter" class="select" aria-label="Filter by status">
+        <option value="all">All Status</option>
+        <option value="Pending">Pending</option>
+        <option value="Resolved">Resolved</option>
+      </select>
+      <button id="resetBtn" class="btn">Reset</button>
+    </div>
+
+    <!-- table -->
+    <div style="overflow:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:60px">S.No</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th style="width:100px;text-align:right">Count</th>
+            <th style="width:140px;text-align:center">Date</th>
+            <th style="width:140px;text-align:center">Status</th>
+            <th style="width:160px;text-align:center">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="needsTableBody">
+          {% for need in obj %}
+          <tr data-type="{{ need.type|lower }}" data-desc="{{ need.description|lower }}" data-status="{{ need.status }}">
+            <td>{{ forloop.counter }}</td>
+            <td>{{ need.type }}</td>
+            <td>{{ need.description|default:"—" }}</td>
+            <td style="text-align:right;">{{ need.count|default:"—" }}</td>
+            <td style="text-align:center;">{{ need.date }}</td>
+            <td style="text-align:center;">
+              <span class="status-tag status-{{ need.status }}">{{ need.status }}</span>
+            </td>
+            <td style="text-align:center;" class="actions">
+              <a href="{% url 'edit_needs' need.id %}" class="btn">Edit</a>
+
+              <!-- Delete form (non-AJAX) -->
+              <form action="{% url 'delete_needs' need.id %}" method="post" class="deleteForm" style="display:inline;">
+                {% csrf_token %}
+                <button type="button" class="btn btn-delete" data-type="{{ need.type }}">Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted);">No needs found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<!-- Confirmation Modal -->
+<div id="overlay" class="overlay">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirmTitle">Delete Need?</div>
+    <div class="confirm-text" id="confirmText">Are you sure you want to delete this need?</div>
+    <div class="confirm-actions">
+      <button id="confirmCancel" class="btn">Cancel</button>
+      <button id="confirmDelete" class="btn btn-primary">Delete</button>
+    </div>
+  </div>
+</div>
+
+
+{% if messages %}
+<div id="toast"
+     class="fixed bottom-5 right-5 bg-white border border-gray-200 shadow-xl rounded-xl px-5 py-4 
+            text-sm font-medium text-gray-900 z-50 animate-slide-up flex items-center gap-3 transition-all duration-300">
+  {% for message in messages %}
+    {% if message.tags == 'success' %}
+      <span class="text-green-500">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M5 13l4 4L19 7" />
+        </svg>
+      </span>
+    
+    {% endif %}
+    <p class="{% if message.tags == 'success' %}text-green-700{% elif message.tags == 'error' %}text-red-700{% endif %}">
+      {{ message }}
+    </p>
+  {% endfor %}
+</div>
+
+<style>
+@keyframes slide-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.animate-slide-up { animation: slide-up 0.4s ease-out forwards; }
+</style>
+
+<script>
+  setTimeout(() => {
+    const toast = document.getElementById("toast");
+    if (toast) {
+      toast.style.opacity = "0";
+      toast.style.transform = "translateY(20px)";
+      setTimeout(() => toast.remove(), 400);
+    }
+  }, 4000);
+</script> 
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* Simple filtering + modal-confirm delete (non-AJAX)
+   Works with your existing delete_needs view that redirects
+*/
+
+const searchInput = document.getElementById('searchInput');
+const statusFilter = document.getElementById('statusFilter');
+const resetBtn = document.getElementById('resetBtn');
+const tbody = document.getElementById('needsTableBody');
+
+const overlay = document.getElementById('overlay');
+const confirmTitle = document.getElementById('confirmTitle');
+const confirmText = document.getElementById('confirmText');
+const confirmCancel = document.getElementById('confirmCancel');
+const confirmDelete = document.getElementById('confirmDelete');
+
+let formToSubmit = null;
+
+/* Filter logic */
+function filterRows() {
+  const q = searchInput.value.toLowerCase();
+  const st = statusFilter.value;
+  const rows = tbody.querySelectorAll('tr');
+  let counter = 1;
+  rows.forEach(row => {
+    const type = row.dataset.type || '';
+    const desc = row.dataset.desc || '';
+    const status = row.dataset.status || '';
+    const match = (!q || type.includes(q) || desc.includes(q)) &&
+                  (st === 'all' || status === st);
+    row.style.display = match ? '' : 'none';
+    if (match) {
+      const cell = row.querySelector('td');
+      if (cell) cell.textContent = counter++;
+    }
+  });
+}
+
+searchInput.addEventListener('input', filterRows);
+statusFilter.addEventListener('change', filterRows);
+resetBtn.addEventListener('click', () => {
+  searchInput.value = '';
+  statusFilter.value = 'all';
+  filterRows();
+});
+
+/* Delete confirmation modal */
+document.querySelectorAll('.btn-delete').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    const form = btn.closest('.deleteForm');
+    formToSubmit = form;
+    const needType = btn.dataset.type || 'this need';
+    confirmTitle.textContent = `Delete "${needType}"?`;
+    confirmText.textContent = `Are you sure you want to delete "${needType}"? This action cannot be undone.`;
+    overlay.classList.add('show');
+  });
+});
+
+confirmCancel.addEventListener('click', () => {
+  overlay.classList.remove('show');
+  formToSubmit = null;
+});
+
+confirmDelete.addEventListener('click', () => {
+  if (formToSubmit) {
+    formToSubmit.submit(); // Submit the form normally (redirects via Django view)
+  }
+});
+
+overlay.addEventListener('click', (e) => {
+  if (e.target === overlay) {
+    overlay.classList.remove('show');
+    formToSubmit = null;
+  }
+});
+
+// initialize
+filterRows();
+</script>
+{% endblock %}

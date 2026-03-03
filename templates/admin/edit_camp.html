@@ -1,0 +1,492 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}View Camps — Disaster Management{% endblock %}
+
+{% block head_extra %}
+<style>
+:root { --primary: #2094f3; }
+body { font-family: 'Public Sans', sans-serif; background: #f9fafb; }
+#map { width: 100%; height: 500px; border-radius: 12px; cursor: crosshair; }
+.autocomplete-suggestions { position: absolute; background: white; border: 1px solid #ccc; z-index: 10000; max-height: 220px; overflow-y: auto; width: 100%; border-radius: 8px; }
+.autocomplete-suggestion { padding: 10px 12px; font-size: 14px; color: #1e293b; cursor: pointer; transition: background 0.2s; }
+.autocomplete-suggestion:hover { background: #eff6ff; }
+.site-logo { width:44px; height:44px; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; background:linear-gradient(180deg,var(--primary),var(--accent)); color:white; }
+:root { --primary: #147efb; --accent: #6c5ce7; --glass: rgba(255,255,255,0.06); --glass-border: rgba(255,255,255,0.10); }
+body { font-family: 'Public Sans', system-ui, -apple-system, "Segoe UI", Roboto, Arial; background: #f8fafc; color: #0f172a; }
+
+/* small helpers */
+.glass { background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.lift { transition: transform .22s cubic-bezier(.2,.9,.32,1), box-shadow .22s; }
+.lift:hover { transform: translateY(-6px); box-shadow: 0 18px 40px rgba(2,6,23,0.20); }
+input:hover, select:hover { border-color: #93c5fd; }
+</style>
+{% endblock %}
+<!-- HEADER (kept your original style) -->
+
+{% block content %}
+<main class="flex-1 container mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+<!-- FORM (fields made required; retained your design) -->
+<div class="bg-gradient-to-br from-white via-slate-50 to-blue-50 rounded-2xl shadow-2xl border border-slate-200/60 p-8 lift relative overflow-hidden">
+  <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[var(--primary)] via-sky-400 to-indigo-500 rounded-t-2xl"></div>
+
+  <h2 class="text-3xl font-black text-slate-800 mb-6 flex items-center gap-3">
+    <span class="material-icons text-[var(--primary)] text-4xl">add_location_alt</span>
+    Add New Relief Camp
+  </h2>
+
+  <form id="campForm" class="space-y-10"  method="post">
+    {% csrf_token %}
+
+    <!-- SECTION 1: Camp Info -->
+    <section class="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-lg transition">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-icons text-blue-500">home_work</span>
+        <h3 class="text-lg font-bold text-slate-800">Camp Details</h3>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label for="camp-name" class="block text-sm font-medium text-gray-600 mb-1">Camp Name</label>
+          <input type="text" name="camp_name" id="camp-name" value="{{ obj.name }}" placeholder="e.g., Hope Shelter" required maxlength="120"
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition outline-none"/>
+        </div>
+
+        <div>
+          <label for="total-members" class="block text-sm font-medium text-gray-600 mb-1">Total Members</label>
+          <input type="number" name="total-members" id="total-members" min="1" value="{{ obj.total_member}}" placeholder="e.g., 50" required
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition outline-none"/>
+        </div>
+        <div>
+        <label for="status" class="block text-sm font-medium text-gray-600 mb-1">Status</label>
+          <select name="status" id="status" required
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition outline-none">
+            <option value="{{ obj.status }}">{{ obj.status }}</option>
+            <option>open</option>
+            <option>closed</option>
+          </select>
+          </div>
+      </div>
+
+      <div class="mt-6">
+        <label for="coordinator" class="block text-sm font-medium text-gray-600 mb-1">Camp Coordinator</label>
+        <div class="flex items-center gap-2">
+          <select name="coordinator" id="coordinator" required
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition outline-none">
+            {% for coordinator in coordinators %}
+            <option value="{{ obj.coordinator.id }}">{{ obj.coordinator }}</option>
+            <option value="{{ coordinator.id }}">{{ coordinator.username }}</option>
+            {% endfor %}
+          </select>
+          <a href="{% url 'add_coordinator' %}"
+            class="px-3 py-2 rounded-lg text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-sm font-medium shadow-sm whitespace-nowrap">+ Add</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: Location Info (all fields required; select via map) -->
+    <section class="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-lg transition">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-icons text-emerald-500">location_on</span>
+        <h3 class="text-lg font-bold text-slate-800">Location Details</h3>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label for="district" class="block text-sm font-medium text-gray-600 mb-1">District (Kerala)</label>
+          <select name="district" id="district" required
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition outline-none">
+            <option value="{{ obj.district }}">{{ obj.district }}</option>
+            <option>Alappuzha</option>
+            <option>Ernakulam</option>
+            <option>Idukki</option>
+            <option>Kannur</option>
+            <option>Kasaragod</option>
+            <option>Kollam</option>
+            <option>Kottayam</option>
+            <option>Kozhikode</option>
+            <option>Malappuram</option>
+            <option>Palakkad</option>
+            <option>Pathanamthitta</option>
+            <option>Thiruvananthapuram</option>
+            <option>Thrissur</option>
+            <option>Wayanad</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="pin" class="block text-sm font-medium text-gray-600 mb-1">PIN Code</label>
+          <input type="text" name="pin" value="{{ obj.pin }}" id="pin" placeholder="e.g., 689123" pattern="[0-9]{6}" inputmode="numeric" required
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition outline-none"/>
+        </div>
+      </div>
+
+      <div class="relative mt-6">
+        <label for="address" class="block text-sm font-medium text-gray-600 mb-1">Place / Address</label>
+        <input type="text" name="address" value="{{obj.place}}" id="address" placeholder="Start typing to search or click on the map..." autocomplete="off" required
+          class="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition outline-none"/>
+        <div id="suggestions" class="autocomplete-suggestions rounded-md shadow-md" aria-hidden="true"></div>
+        <p class="text-xs text-slate-500 mt-2">Tip: Click on the map to pick a location. The marker is draggable for fine adjustments. You can also enter coordinates manually.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        <div>
+          <label for="lat" class="block text-sm font-medium text-gray-600 mb-1">Latitude</label>
+          <input type="number" id="lat" value="{{obj.latitude}}" name="latitude" step="any" required aria-required="true"
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition outline-none"/>
+        </div>
+
+        <div>
+          <label for="lng" class="block text-sm font-medium text-gray-600 mb-1">Longitude</label>
+          <input type="number" id="lng" value="{{obj.longitude}}" name="longitude" step="any" required aria-required="true"
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition outline-none"/>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-3 mt-5">
+        <button type="button" id="useLocation"
+          class="px-5 py-2.5 text-white rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 transition font-semibold shadow-sm">
+          Use My Location
+        </button>
+
+        <button type="button" id="clearLocation"
+          class="px-5 py-2.5 text-gray-700 rounded-lg border border-gray-300 hover:bg-gray-100 font-semibold">
+          Clear Location
+        </button>
+      </div>
+    </section>
+
+    <!-- SECTION 3: Contact -->
+  
+
+    <!-- SUBMIT BUTTONS -->
+    <div class="flex justify-end gap-3 pt-6 border-t border-slate-200">
+      <a href="{% url 'view_camp' %}" 
+   class="px-6 py-2.5 rounded-full text-sm font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300 transition">
+   Cancel
+</a>
+
+      <button type="submit"
+        class="px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
+        Save Camp
+      </button>
+    </div>
+  </form>
+</div>
+
+
+
+<!-- MAP (kept your existing look + added direct-selection UX) -->
+<div class="sticky top-[5.5rem] h-[calc(100vh-7rem)]">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 h-full flex flex-col">
+      <h3 class="text-xl font-bold p-4 border-b">Add Location on Map</h3>
+      <div id="map" class="flex-1 rounded-b-2xl" role="application" aria-label="Map to pick camp location"></div>
+      <p class="text-sm text-gray-500 p-4 border-t">Click the map to place a marker; drag the marker to fine-tune coordinates. Address and district are auto-filled when possible.</p>
+    </div>
+  </div>
+
+</main>
+{% endblock %}
+<!-- FOOTER (kept original style) -->
+ 
+{% block scripts %}
+<script>
+// Initialize map
+const map = L.map("map").setView([10.8505, 76.2711], 7);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "© OpenStreetMap contributors",
+}).addTo(map);
+
+let marker = null;
+
+const districts = {
+  "Alappuzha": [9.4981, 76.3388],
+  "Ernakulam": [10.0356, 76.3147],
+  "Idukki": [9.919, 77.1025],
+  "Kannur": [11.8745, 75.3704],
+  "Kasaragod": [12.5007, 74.9904],
+  "Kollam": [8.8932, 76.6141],
+  "Kottayam": [9.5916, 76.5228],
+  "Kozhikode": [11.2588, 75.7804],
+  "Malappuram": [11.0735, 76.0748],
+  "Palakkad": [10.7867, 76.6548],
+  "Pathanamthitta": [9.2643, 76.7876],
+  "Thiruvananthapuram": [8.5241, 76.9366],
+  "Thrissur": [10.5276, 76.2144],
+  "Wayanad": [11.685, 76.1296],
+};
+
+// Elements
+const addressInput = document.getElementById("address");
+const suggestionsBox = document.getElementById("suggestions");
+const latInput = document.getElementById("lat");
+const lngInput = document.getElementById("lng");
+const districtSelect = document.getElementById("district");
+const pinField = document.getElementById("pin");
+const contactField = document.getElementById("contact");
+const form = document.getElementById("campForm");
+
+// Debounce helper
+let debounceTimer = null;
+function debounce(fn, delay) {
+  return function (...args) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+// ✅ Improved reverse geocode with Kerala district detection
+async function reverseGeocode(lat, lng) {
+  try {
+    const resp = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1`
+    );
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const addr = data?.address || {};
+
+    // Address & PIN autofill
+    if (data.display_name) addressInput.value = data.display_name;
+    if (addr.postcode) pinField.value = addr.postcode;
+
+    // District detection
+    const possibleNames = [
+      addr.state_district,
+      addr.county,
+      addr.district,
+      addr.region,
+      addr.city,
+      addr.town,
+      addr.village,
+    ].filter(Boolean);
+
+    let detectedDistrict = "";
+    for (const name of possibleNames) {
+      const clean = name.toLowerCase().replace(" district", "").trim();
+      for (const d of Object.keys(districts)) {
+        const districtLower = d.toLowerCase();
+        if (
+          clean === districtLower ||
+          clean.includes(districtLower) ||
+          districtLower.includes(clean)
+        ) {
+          detectedDistrict = d;
+          break;
+        }
+      }
+      if (detectedDistrict) break;
+    }
+
+    // Auto-select district
+    if (detectedDistrict) {
+      districtSelect.value = detectedDistrict;
+      districtSelect.classList.remove("border-red-500");
+      removeError(districtSelect);
+    } else {
+      districtSelect.value = "";
+      console.warn("District not matched →", possibleNames);
+    }
+
+    return data;
+  } catch (err) {
+    console.warn("Reverse geocode error:", err);
+  }
+}
+
+// ✅ Marker setup
+function setMarker(lat, lng, doReverse = true, displayName = null) {
+  lat = parseFloat(lat);
+  lng = parseFloat(lng);
+  if (isNaN(lat) || isNaN(lng)) return;
+
+  latInput.value = lat.toFixed(6);
+  lngInput.value = lng.toFixed(6);
+  const latlng = [lat, lng];
+
+  if (marker) {
+    marker.setLatLng(latlng);
+  } else {
+    marker = L.marker(latlng, { draggable: true }).addTo(map);
+    marker.on("dragend", (e) => {
+      const p = e.target.getLatLng();
+      setMarker(p.lat, p.lng, true);
+    });
+  }
+
+  if (displayName) {
+    addressInput.value = displayName;
+    marker.bindPopup(displayName).openPopup();
+  } else if (doReverse) {
+    reverseGeocode(lat, lng).then((res) => {
+      if (res?.display_name) marker.bindPopup(res.display_name).openPopup();
+    });
+  }
+
+  map.setView(latlng, 13);
+}
+
+// Map click
+map.on("click", (e) => setMarker(e.latlng.lat, e.latlng.lng, true));
+
+// ✅ Autocomplete search
+async function searchPlaces(q) {
+  try {
+    const district = districtSelect.value
+      ? `, ${districtSelect.value}, Kerala`
+      : ", Kerala";
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=${encodeURIComponent(
+        q + district
+      )}`
+    );
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (err) {
+    console.warn(err);
+    return [];
+  }
+}
+
+const performSearch = debounce(async function () {
+  const q = addressInput.value.trim();
+  if (q.length < 3) {
+    suggestionsBox.innerHTML = "";
+    suggestionsBox.setAttribute("aria-hidden", "true");
+    return;
+  }
+  const results = await searchPlaces(q);
+  suggestionsBox.innerHTML = "";
+  suggestionsBox.setAttribute("aria-hidden", "false");
+  results.slice(0, 5).forEach((item) => {
+    const div = document.createElement("div");
+    div.className = "autocomplete-suggestion";
+    div.textContent = item.display_name;
+    div.addEventListener("click", () => {
+      setMarker(parseFloat(item.lat), parseFloat(item.lon), false, item.display_name);
+      suggestionsBox.innerHTML = "";
+      suggestionsBox.setAttribute("aria-hidden", "true");
+    });
+    suggestionsBox.appendChild(div);
+  });
+}, 300);
+
+addressInput.addEventListener("input", performSearch);
+
+// ✅ Use My Location
+document.getElementById("useLocation").addEventListener("click", () => {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setMarker(pos.coords.latitude, pos.coords.longitude, true),
+      (err) => alert("Unable to fetch location: " + err.message)
+    );
+  } else alert("Geolocation not supported by your browser");
+});
+
+// ✅ Clear Location
+document.getElementById("clearLocation").addEventListener("click", () => {
+  if (marker) {
+    map.removeLayer(marker);
+    marker = null;
+  }
+  [latInput, lngInput, addressInput, pinField].forEach((f) => (f.value = ""));
+  districtSelect.value = "";
+  suggestionsBox.innerHTML = "";
+  suggestionsBox.setAttribute("aria-hidden", "true");
+  map.setView([10.8505, 76.2711], 7);
+});
+
+// Manual lat/lng input → update marker
+function tryUpdateFromInputs() {
+  const lat = parseFloat(latInput.value);
+  const lng = parseFloat(lngInput.value);
+  if (!isNaN(lat) && !isNaN(lng)) setMarker(lat, lng, true);
+}
+latInput.addEventListener("change", tryUpdateFromInputs);
+lngInput.addEventListener("change", tryUpdateFromInputs);
+
+// ✅ Inline Error Helpers
+function showError(input, message) {
+  removeError(input);
+  const error = document.createElement("p");
+  error.className = "text-sm text-red-600 mt-1";
+  error.textContent = message;
+  input.classList.add("border-red-500");
+  input.insertAdjacentElement("afterend", error);
+}
+function removeError(input) {
+  input.classList.remove("border-red-500");
+  const next = input.nextElementSibling;
+  if (next && next.classList.contains("text-red-600")) next.remove();
+}
+
+// ✅ Live Validation
+pinField.addEventListener("input", () => {
+  removeError(pinField);
+  const pin = pinField.value.trim();
+  if (pin && !/^\d{6}$/.test(pin)) showError(pinField, "Enter a valid 6-digit PIN code.");
+});
+
+contactField.addEventListener("input", () => {
+  removeError(contactField);
+  const contact = contactField.value.trim();
+  const pattern = /^(\+91[-\s]?)?[6-9]\d{9}$/;
+  if (contact && !pattern.test(contact))
+    showError(contactField, "Enter a valid 10-digit number or +91 format.");
+});
+
+// ✅ Form Validation (inline)
+form.addEventListener("submit", (e) => {
+  let valid = true;
+
+  const lat = parseFloat(latInput.value);
+  const lng = parseFloat(lngInput.value);
+  const pin = pinField.value.trim();
+  const contact = contactField.value.trim();
+
+  // Coordinates
+  if (isNaN(lat) || isNaN(lng)) {
+    valid = false;
+    showError(latInput, "Please provide valid latitude and longitude.");
+  } else {
+    removeError(latInput);
+  }
+
+  // PIN
+  if (!/^\d{6}$/.test(pin)) {
+    valid = false;
+    showError(pinField, "Enter a valid 6-digit PIN code.");
+  } else removeError(pinField);
+
+  // Contact
+  const pattern = /^(\+91[-\s]?)?[6-9]\d{9}$/;
+  if (!pattern.test(contact)) {
+    valid = false;
+    showError(contactField, "Enter a valid 10-digit number or +91 format.");
+  } else removeError(contactField);
+
+  // District
+  if (!districtSelect.value) {
+    valid = false;
+    showError(districtSelect, "Please select a district.");
+  } else removeError(districtSelect);
+
+  if (!valid) e.preventDefault();
+});
+
+// ✅ Reset form
+form.addEventListener("reset", () => {
+  if (marker) {
+    map.removeLayer(marker);
+    marker = null;
+  }
+  [latInput, lngInput, addressInput, pinField].forEach((f) => (f.value = ""));
+  districtSelect.value = "";
+  suggestionsBox.innerHTML = "";
+  suggestionsBox.setAttribute("aria-hidden", "true");
+  setTimeout(() => map.setView([10.8505, 76.2711], 7), 100);
+});
+</script>
+
+
+{% endblock %}

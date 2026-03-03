@@ -1,0 +1,937 @@
+{% extends "camp_cordinator/base.html" %}
+{% load static %}
+
+{% block title %}Add Person — Disaster Management{% endblock %}
+
+{% block head_extra %}
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  :root {
+    --primary: #147efb;
+    --primary-dark: #0c66e4;
+    --accent: #6c5ce7;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --light: #f8fafc;
+    --lighter: #f1f5f9;
+    --dark: #0f172a;
+    --border: #e2e8f0;
+    --text-secondary: #64748b;
+    --glass: rgba(255,255,255,0.06);
+    --glass-border: rgba(255,255,255,0.10);
+  }
+
+  body {
+    font-family: 'Segoe UI', 'Roboto', 'Ubuntu', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: var(--dark);
+    padding: 20px;
+  }
+
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .header {
+    text-align: center;
+    color: white;
+    margin-bottom: 40px;
+    animation: slideDown 0.6s ease-out;
+  }
+
+  .header h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 10px;
+    letter-spacing: -0.5px;
+  }
+
+  .header p {
+    font-size: 1.05rem;
+    opacity: 0.95;
+  }
+
+  .card {
+    background: white;
+    border-radius: 20px;
+    padding: 45px;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+    animation: slideUp 0.6s ease-out;
+  }
+
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--light);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-title::before {
+    content: '';
+    width: 4px;
+    height: 24px;
+    background: linear-gradient(to bottom, var(--primary), var(--accent));
+    border-radius: 2px;
+  }
+
+  .form-group {
+    margin-bottom: 24px;
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  .field-label {
+    display: block;
+    font-size: 0.95rem;
+    color: var(--dark);
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: 0.3px;
+  }
+
+  .field-label .required {
+    color: var(--danger);
+    margin-left: 2px;
+  }
+
+  .input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .input, .select {
+    width: 100%;
+    padding: 12px 15px;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    font-size: 0.95rem;
+    background: white;
+    transition: all 0.3s ease;
+    color: var(--dark);
+  }
+
+  .input::placeholder, .select {
+    color: var(--text-secondary);
+  }
+
+  .input:focus, .select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(20, 126, 251, 0.1);
+    background: #fafbff;
+  }
+
+  .input.valid {
+    border-color: var(--success);
+    background: #f0fdf4;
+  }
+
+  .input.invalid {
+    border-color: var(--danger);
+    background: #fef2f2;
+  }
+
+  .input-icon {
+    position: absolute;
+    right: 15px;
+    font-size: 1.1rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .input.valid ~ .input-icon {
+    opacity: 1;
+    color: var(--success);
+  }
+
+  .input.invalid ~ .input-icon {
+    opacity: 1;
+    color: var(--danger);
+  }
+
+  .note {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 6px;
+  }
+
+  .error {
+    color: var(--danger);
+    font-size: 0.85rem;
+    margin-top: 6px;
+    display: none;
+    animation: shake 0.3s ease;
+    font-weight: 500;
+  }
+
+  .error.show {
+    display: block;
+  }
+
+  /* Password strength indicator */
+  .password-strength {
+    margin-top: 12px;
+    display: none;
+  }
+
+  .strength-bar {
+    height: 6px;
+    background: var(--lighter);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+
+  .strength-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--danger);
+    transition: width 0.3s ease, background 0.3s ease;
+    border-radius: 3px;
+  }
+
+  .strength-text {
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .strength-fill.weak { background: var(--danger); }
+  .strength-fill.fair { background: var(--warning); }
+  .strength-fill.good { background: #3b82f6; }
+  .strength-fill.strong { background: var(--success); }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 2px solid var(--lighter);
+  }
+
+  .btn {
+    padding: 12px 28px;
+    border-radius: 12px;
+    border: none;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-secondary {
+    background: var(--lighter);
+    color: var(--dark);
+    border: 2px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    background: var(--border);
+    transform: translateY(-2px);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+    color: white;
+    box-shadow: 0 10px 25px rgba(20, 126, 251, 0.3);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 35px rgba(20, 126, 251, 0.4);
+  }
+
+  .btn-primary:active {
+    transform: translateY(-1px);
+  }
+
+  /* Section spacing */
+  .form-section {
+    margin-bottom: 35px;
+  }
+
+  .form-section:last-of-type {
+    margin-bottom: 0;
+  }
+
+  /* Animations */
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+
+  /* Responsive design */
+  @media (max-width: 768px) {
+    .card {
+      padding: 30px;
+    }
+
+    .header h1 {
+      font-size: 1.8rem;
+    }
+
+    .grid-2, .grid-3 {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .actions {
+      flex-direction: column-reverse;
+    }
+
+    .btn {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    body {
+      padding: 10px;
+    }
+
+    .card {
+      padding: 20px;
+      border-radius: 16px;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+    }
+
+    .section-title {
+      font-size: 1.1rem;
+    }
+
+    .field-label {
+      font-size: 0.9rem;
+    }
+
+    .input, .select {
+      padding: 11px 12px;
+      font-size: 16px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-header">
+  <h1>Add New Member</h1>
+</div>
+
+<style>
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(90deg, #147efb 0%, #6c5ce7 100%);
+  color: #fff;
+  padding: 16px 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  margin: 40px 0 30px;
+  animation: fadeInDown 0.6s ease;
+}
+
+.page-header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
+
+  <div class="card">
+    <form id="personForm" method="post" novalidate>
+      {% csrf_token %}
+
+      <!-- PERSONAL INFORMATION SECTION -->
+      <div class="form-section">
+        <div class="section-title">Personal Information</div>
+        
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="id_name" class="field-label">
+              Full Name <span class="required">*</span>
+            </label>
+            <div class="input-wrapper">
+              <input
+                id="id_name"
+                name="name"
+                type="text"
+                maxlength="200"
+                required
+                class="input"
+                placeholder="e.g., John Doe"
+              />
+              <span class="input-icon">✓</span>
+            </div>
+            <p id="err_name" class="error"></p>
+          </div>
+
+          <div class="form-group">
+            <label for="id_email" class="field-label">Email</label>
+            <div class="input-wrapper">
+              <input
+                id="id_email"
+                name="email"
+                type="email"
+                maxlength="255"
+                class="input"
+                placeholder="name@example.com"
+              />
+              <span class="input-icon">✓</span>
+            </div>
+            <p class="note">Optional but helpful for contact and verification</p>
+            <p id="err_email" class="error"></p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="id_age" class="field-label">Age</label>
+            <div class="input-wrapper">
+              <input
+                id="id_age"
+                name="age"
+                type="number"
+                min="0"
+                max="120"
+                class="input"
+                placeholder="e.g., 36"
+              />
+              <span class="input-icon">✓</span>
+            </div>
+            <p id="err_age" class="error"></p>
+          </div>
+
+          <div class="form-group">
+            <label for="id_gender" class="field-label">Gender</label>
+            <select id="id_gender" name="gender" class="select" aria-label="Gender" required>
+              <option value="">Prefer not to say</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+            <p id="err_gender" class="error"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOCATION & CONTACT SECTION -->
+      <div class="form-section">
+        <div class="section-title">Location & Contact</div>
+        
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="id_place" class="field-label">Place / Locality</label>
+            <div class="input-wrapper">
+              <input
+                id="id_place"
+                name="place"
+                type="text"
+                maxlength="200"
+                class="input"
+                placeholder="e.g., Balanji Nagar" required
+              />
+              <span class="input-icon">✓</span>
+            </div>
+            <p id="err_place" class="error"></p>
+          </div>
+
+          <div class="form-group">
+            <label for="id_post" class="field-label">Post (Office)</label>
+            <div class="input-wrapper">
+              <input required
+                id="id_post"
+                name="post"
+                type="text"
+                maxlength="100"
+                class="input"
+                placeholder="e.g., Mettukuppam Post"
+              />
+              <span class="input-icon">✓</span>
+            </div>
+            <p id="err_post" class="error"></p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="id_pin" class="field-label">PIN Code <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <input 
+                id="id_pin"
+                name="pin"
+                type="text"
+                inputmode="numeric"
+                pattern="\d{6}"
+                maxlength="6"
+                required
+                class="input"
+                placeholder="689123"
+
+              />
+              <span class="input-icon">✓</span>
+            </div>
+            <p class="note">6-digit PIN code</p>
+            <p id="err_pin" class="error"></p>
+          </div>
+
+          <div class="form-group">
+            <label for="id_phone" class="field-label">Phone <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <input
+                id="id_phone"
+                name="phone"
+                type="tel"
+                inputmode="tel"
+                maxlength="20"
+                required
+                class="input"
+                placeholder="+91 9876543210"
+              />
+              <span class="input-icon">✓</span>
+            </div>
+            <p class="note">10-digit mobile number or +91 prefix</p>
+            <p id="err_phone" class="error"></p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="id_district" class="field-label">District</label>
+            <select required id="id_district" name="district" class="select">
+              <option value="">-- Select district --</option>
+              <option>Alappuzha</option>
+              <option>Ernakulam</option>
+              <option>Idukki</option>
+              <option>Kannur</option>
+              <option>Kasaragod</option>
+              <option>Kollam</option>
+              <option>Kottayam</option>
+              <option>Kozhikode</option>
+              <option>Malappuram</option>
+              <option>Palakkad</option>
+              <option>Pathanamthitta</option>
+              <option>Thiruvananthapuram</option>
+              <option>Thrissur</option>
+              <option>Wayanad</option>
+            </select>
+            <p id="err_district" class="error"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CREDENTIALS SECTION -->
+      <div class="form-section">
+        <div class="section-title">Login Credentials</div>
+        
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="id_username" class="field-label">Username <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <input
+                id="id_username"
+                name="username"
+                type="text"
+                maxlength="200"
+                required
+                class="input"
+                placeholder="Choose a username"
+              />
+              <span class="input-icon">✓</span>
+            </div>
+            <p id="err_username" class="error"></p>
+          </div>
+
+          <div class="form-group">
+            <label for="id_password" class="field-label">Password <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <input
+                id="id_password"
+                name="password"
+                type="password"
+                maxlength="200"
+                required
+                class="input"
+                placeholder="Create a strong password"
+              />
+              <span class="input-icon">✓</span>
+            </div>
+            <div class="password-strength">
+              <div class="strength-bar">
+                <div class="strength-fill" id="strengthFill"></div>
+              </div>
+              <div class="strength-text">
+                <span id="strengthLabel">Strength: --</span>
+              </div>
+            </div>
+            <p id="err_password" class="error"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTIONS -->
+      <div class="actions">
+        <a href="{% url 'member_register' %}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Person</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const form = document.getElementById('personForm');
+  if (!form) return;
+
+  const nameInput = document.getElementById('id_name');
+  const emailInput = document.getElementById('id_email');
+  const phoneInput = document.getElementById('id_phone');
+  const pinInput = document.getElementById('id_pin');
+  const ageInput = document.getElementById('id_age');
+  const usernameInput = document.getElementById('id_username');
+  const passwordInput = document.getElementById('id_password');
+
+  function showError(inputId, message) {
+    const errorEl = document.getElementById(`err_${inputId}`);
+    if (!errorEl) return;
+
+    if (message) {
+      errorEl.textContent = message;
+      errorEl.classList.add('show');
+    } else {
+      errorEl.classList.remove('show');
+      errorEl.textContent = '';
+    }
+  }
+
+  function setFieldState(input, isValid) {
+    if (isValid === true) {
+      input.classList.remove('invalid');
+      input.classList.add('valid');
+    } else if (isValid === false) {
+      input.classList.remove('valid');
+      input.classList.add('invalid');
+    } else {
+      input.classList.remove('valid', 'invalid');
+    }
+  }
+
+  // Name validation
+  nameInput.addEventListener('blur', function() {
+    const value = this.value.trim();
+    if (value.length < 2) {
+      showError('name', 'Full name must be at least 2 characters');
+      setFieldState(this, false);
+    } else if (!/^[a-zA-Z\s'-]+$/.test(value)) {
+      showError('name', 'Name can only contain letters, spaces, hyphens, and apostrophes');
+      setFieldState(this, false);
+    } else {
+      showError('name', '');
+      setFieldState(this, true);
+    }
+  });
+
+  // Email validation
+  emailInput.addEventListener('blur', function() {
+    const value = this.value.trim();
+    if (value) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value)) {
+        showError('email', 'Enter a valid email address');
+        setFieldState(this, false);
+      } else {
+        showError('email', '');
+        setFieldState(this, true);
+      }
+    } else {
+      setFieldState(this, null);
+    }
+  });
+
+  // PIN validation
+  pinInput.addEventListener('blur', function() {
+    const value = this.value.trim();
+    if (value && !/^\d{6}$/.test(value)) {
+      showError('pin', 'PIN must be exactly 6 digits');
+      setFieldState(this, false);
+    } else if (value) {
+      showError('pin', '');
+      setFieldState(this, true);
+    } else {
+      setFieldState(this, null);
+    }
+  });
+
+  // Phone validation
+  phoneInput.addEventListener('blur', function() {
+    const value = this.value.trim();
+    const phoneRegex = /^(\+91[-\s]?)?[6-9]\d{9}$/;
+    
+    if (value && !phoneRegex.test(value)) {
+      showError('phone', 'Enter a valid 10-digit Indian mobile number');
+      setFieldState(this, false);
+    } else if (value) {
+      showError('phone', '');
+      setFieldState(this, true);
+    } else {
+      setFieldState(this, null);
+    }
+  });
+
+  // Age validation
+  ageInput.addEventListener('blur', function() {
+    const value = this.value;
+    if (value && (value < 0 || value > 120)) {
+      showError('age', 'Please enter a valid age between 0 and 120');
+      setFieldState(this, false);
+    } else if (value) {
+      showError('age', '');
+      setFieldState(this, true);
+    } else {
+      setFieldState(this, null);
+    }
+  });
+
+  // Username validation
+  usernameInput.addEventListener('blur', function() {
+    const value = this.value.trim();
+    if (value && value.length < 3) {
+      showError('username', 'Username must be at least 3 characters');
+      setFieldState(this, false);
+    } else if (value && !/^[a-zA-Z0-9_-]+$/.test(value)) {
+      showError('username', 'Username can only contain letters, numbers, hyphens, and underscores');
+      setFieldState(this, false);
+    } else if (value) {
+      showError('username', '');
+      setFieldState(this, true);
+    } else {
+      setFieldState(this, null);
+    }
+  });
+
+  // Password strength checker
+  function checkPasswordStrength(password) {
+    const strengthBar = document.querySelector('.password-strength');
+    const strengthFill = document.getElementById('strengthFill');
+    const strengthLabel = document.getElementById('strengthLabel');
+    
+    if (!password) {
+      strengthBar.style.display = 'none';
+      return;
+    }
+
+    strengthBar.style.display = 'block';
+
+    let strength = 0;
+    const checks = {
+      length: password.length >= 8,
+      hasLower: /[a-z]/.test(password),
+      hasUpper: /[A-Z]/.test(password),
+      hasNumber: /\d/.test(password),
+      hasSpecial: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+    };
+
+    Object.values(checks).forEach(check => {
+      if (check) strength++;
+    });
+
+    let level, percentage, color;
+    if (strength === 0) {
+      level = 'Weak';
+      percentage = 0;
+      color = 'weak';
+    } else if (strength <= 2) {
+      level = 'Weak';
+      percentage = 25;
+      color = 'weak';
+    } else if (strength <= 3) {
+      level = 'Fair';
+      percentage = 50;
+      color = 'fair';
+    } else if (strength === 4) {
+      level = 'Good';
+      percentage = 75;
+      color = 'good';
+    } else {
+      level = 'Strong';
+      percentage = 100;
+      color = 'strong';
+    }
+
+    strengthFill.style.width = percentage + '%';
+    strengthFill.className = `strength-fill ${color}`;
+    strengthLabel.textContent = `Strength: ${level}`;
+  }
+
+  passwordInput.addEventListener('input', function() {
+    checkPasswordStrength(this.value);
+  });
+
+  passwordInput.addEventListener('blur', function() {
+    const value = this.value.trim();
+    if (value && value.length < 8) {
+      showError('password', 'Password must be at least 8 characters long');
+      setFieldState(this, false);
+    } else if (value && !/[A-Z]/.test(value)) {
+      showError('password', 'Password must contain at least one uppercase letter');
+      setFieldState(this, false);
+    } else if (value && !/[a-z]/.test(value)) {
+      showError('password', 'Password must contain at least one lowercase letter');
+      setFieldState(this, false);
+    } else if (value && !/\d/.test(value)) {
+      showError('password', 'Password must contain at least one number');
+      setFieldState(this, false);
+    } else if (value) {
+      showError('password', '');
+      setFieldState(this, true);
+    } else {
+      setFieldState(this, null);
+    }
+  });
+
+  // Form submission
+  form.addEventListener('submit', function(e) {
+    let isFormValid = true;
+
+    // Name validation
+    if (!nameInput.value.trim()) {
+      showError('name', 'Full name is required');
+      setFieldState(nameInput, false);
+      isFormValid = false;
+    }
+
+    // Email validation (if provided)
+    if (emailInput.value.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailInput.value.trim())) {
+        showError('email', 'Enter a valid email address');
+        setFieldState(emailInput, false);
+        isFormValid = false;
+      }
+    }
+
+    // PIN validation
+    if (!pinInput.value.trim()) {
+      showError('pin', 'PIN code is required');
+      setFieldState(pinInput, false);
+      isFormValid = false;
+    } else if (!/^\d{6}$/.test(pinInput.value.trim())) {
+      showError('pin', 'PIN must be exactly 6 digits');
+      setFieldState(pinInput, false);
+      isFormValid = false;
+    }
+
+    // Phone validation
+    const phoneValue = phoneInput.value.trim();
+    if (!phoneValue) {
+      showError('phone', 'Phone number is required');
+      setFieldState(phoneInput, false);
+      isFormValid = false;
+    } else if (!/^(\+91[-\s]?)?[6-9]\d{9}$/.test(phoneValue)) {
+      showError('phone', 'Enter a valid 10-digit Indian mobile number');
+      setFieldState(phoneInput, false);
+      isFormValid = false;
+    }
+
+    // Username validation
+    if (!usernameInput.value.trim()) {
+      showError('username', 'Username is required');
+      setFieldState(usernameInput, false);
+      isFormValid = false;
+    }
+
+    // Password validation
+    const passwordValue = passwordInput.value.trim();
+    if (!passwordValue) {
+      showError('password', 'Password is required');
+      setFieldState(passwordInput, false);
+      isFormValid = false;
+    } else if (passwordValue.length < 8) {
+      showError('password', 'Password must be at least 8 characters');
+      setFieldState(passwordInput, false);
+      isFormValid = false;
+    } else if (!/[A-Z]/.test(passwordValue) || !/[a-z]/.test(passwordValue) || !/\d/.test(passwordValue)) {
+      showError('password', 'Password must contain uppercase, lowercase, and numbers');
+      setFieldState(passwordInput, false);
+      isFormValid = false;
+    }
+
+    if (!isFormValid) {
+      e.preventDefault();
+    }
+  });
+})();
+</script>
+{% endblock %}

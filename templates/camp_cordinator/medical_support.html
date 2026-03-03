@@ -1,0 +1,375 @@
+{# templates/camp_cordinator/medical_support.html #}
+{% extends "camp_cordinator/base.html" %}
+{% load static %}
+
+{% block title %}Medical Support — Camp Coordinator{% endblock %}
+
+{% block head_extra %}
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+<style>
+  :root { --primary:#147efb; --accent:#6c5ce7; }
+  body { font-family:'Public Sans',system-ui,-apple-system,"Segoe UI",Roboto,Arial; background:#f8fafc; color:#0f172a; }
+  .site-logo{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;background:linear-gradient(180deg,var(--primary),var(--accent));color:white;}
+  .lift{transition:transform .22s cubic-bezier(.2,.9,.32,1),box-shadow .22s;}
+  .lift:hover{transform:translateY(-6px);box-shadow:0 18px 40px rgba(2,6,23,0.12);}
+  table{border-collapse:collapse;}
+  .overlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(0,0,0,0.28); z-index:60; }
+  .overlay.show{ display:flex; }
+  .confirm-box{ background:#fff; border-radius:12px; padding:20px; width:480px; max-width:94%; box-shadow:0 20px 60px rgba(2,6,23,0.18); text-align:center; }
+  @media (max-width:720px){ .search { width:100% !important; } }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<main>
+  <section class="container mx-auto px-6 py-8">
+    <div class="flex flex-col gap-6">
+
+
+{% if messages %}
+<div id="toast"
+     class="fixed bottom-5 right-5 bg-white border border-gray-200 shadow-xl rounded-xl px-5 py-4 
+            text-sm font-medium text-gray-900 z-50 animate-slide-up flex items-center gap-3 transition-all duration-300">
+  {% for message in messages %}
+    {% if message.tags == 'success' %}
+      <span class="text-green-500">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M5 13l4 4L19 7" />
+        </svg>
+      </span>
+    
+    {% endif %}
+    <p class="{% if message.tags == 'success' %}text-green-700{% elif message.tags == 'error' %}text-red-700{% endif %}">
+      {{ message }}
+    </p>
+  {% endfor %}
+</div>
+
+<style>
+@keyframes slide-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.animate-slide-up { animation: slide-up 0.4s ease-out forwards; }
+</style>
+
+<script>
+  setTimeout(() => {
+    const toast = document.getElementById("toast");
+    if (toast) {
+      toast.style.opacity = "0";
+      toast.style.transform = "translateY(20px)";
+      setTimeout(() => toast.remove(), 400);
+    }
+  }, 4000);
+</script>
+{% endif %}
+ 
+
+
+      <!-- Top Controls -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <a href="{% url 'medical_support_post' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl font-semibold shadow lift bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] text-white">
+            <span class="material-icons">add_box</span>
+            Add Medicine
+          </a>
+          <div class="hidden sm:block pl-2 text-sm text-slate-600">Quick actions — add or remove medicines.</div>
+        </div>
+
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+          <div class="relative w-full sm:w-64">
+            <input id="searchInput" type="search" placeholder="Search by medicine..." class="search w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:ring-2 focus:ring-[var(--primary)]" />
+            <span class="material-icons absolute right-3 top-2.5 text-slate-400">search</span>
+          </div>
+
+          <select id="statusFilter" class="rounded-2xl border border-slate-200 px-3 py-2 text-sm">
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="fulfilled">Fulfilled</option>
+          </select>
+
+          <button id="resetBtn" class="px-3 py-2 rounded-2xl border border-slate-200 text-sm">Reset</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="rounded-xl bg-white p-4 shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y table-auto text-sm">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-4 py-3 text-left w-12">S. No</th>
+                <th class="px-4 py-3 text-left">Medicine</th>
+                <th class="px-4 py-3 text-right">Quantity</th>
+                <th class="px-4 py-3 text-center">Status</th>
+                <th class="px-4 py-3 text-center">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody id="medTableBody" class="bg-white divide-y">
+              {# Server-rendered rows. JS will paginate/filter these DOM rows. #}
+              {% for med in obj %}
+                <tr class="medicine-row" data-id="{{ med.id }}" data-name="{{ med.name|default_if_none:''|lower }}" data-status="{{ med.status|default:'pending'|lower }}">
+                  <td class="px-4 py-3">{{ forloop.counter }}</td>
+                  <td class="px-4 py-3">{{ med.medicine }}</td>
+                  <td class="px-4 py-3 text-right">{{ med.quantity|default:"—" }}</td>
+                  <td class="px-4 py-3 text-center">
+                    {% if med.status|lower == 'fulfilled' %}
+                      <span class="px-2 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Fulfilled</span>
+                    {% else %}
+                      <span class="px-2 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">Pending</span>
+                    {% endif %}
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    {# Non-AJAX delete form. Button opens modal. #}
+                    <form action="{% url 'medical_support_delete' med.id %}" method="post" class="inline deleteForm" style="display:inline;">
+                      {% csrf_token %}
+                      <button type="button" class="px-2 py-1 border rounded text-red-600 deleteBtn" data-name="{{ med.name|escape }}">Delete</button>
+                    </form>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">No medicines found.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        
+      </div>
+    </div>
+  </section>
+
+</main>
+
+{# Confirmation modal (centered) #}
+<div id="overlay" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="confirm-box" role="document">
+    <div class="text-lg font-semibold mb-2" id="confirmTitle">Delete Medicine?</div>
+    <div class="text-slate-600 mb-4" id="confirmText">Are you sure you want to delete this medicine? This action cannot be undone.</div>
+    <div class="flex justify-center gap-3">
+      <button id="confirmCancel" class="px-4 py-2 rounded-2xl border">Cancel</button>
+      <button id="confirmDelete" class="px-4 py-2 rounded-2xl bg-[var(--primary)] text-white">Delete</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/*
+  Improved client script for medical_support.html
+  - Waits for DOMContentLoaded
+  - Uses event delegation for delete buttons (works even if rows are added later)
+  - Re-queries rows when needed (keeps counts accurate)
+  - Guards missing pagination elements
+  - ESC key closes modal
+*/
+
+document.addEventListener('DOMContentLoaded', () => {
+  const PAGE_SIZE = 6; // change as needed
+
+  // Element refs (some may be absent — guard them)
+  const tbody = document.getElementById('medTableBody');
+  const searchInput = document.getElementById('searchInput');
+  const statusFilter = document.getElementById('statusFilter');
+  const resetBtn = document.getElementById('resetBtn');
+  const prevPageBtn = document.getElementById('prevPage');
+  const nextPageBtn = document.getElementById('nextPage');
+  const pageInfo = document.getElementById('pageInfo');
+  const shownCountEl = document.getElementById('shownCount');
+  const totalCountEl = document.getElementById('totalCount');
+
+  const overlay = document.getElementById('overlay');
+  const confirmTitle = document.getElementById('confirmTitle');
+  const confirmText = document.getElementById('confirmText');
+  const confirmCancel = document.getElementById('confirmCancel');
+  const confirmDelete = document.getElementById('confirmDelete');
+
+  // State
+  let currentPage = 1;
+  let formToSubmit = null;
+
+  // Utility
+  const qval = s => (s || '').toString().trim().toLowerCase();
+
+  // Always get the current rows from DOM (keeps things accurate after server refresh or DOM changes)
+  function getAllRows() {
+    return Array.from(document.querySelectorAll('.medicine-row'));
+  }
+
+  // Apply filters and update UI
+  function applyFilters() {
+    const rows = getAllRows();
+    const q = qval(searchInput ? searchInput.value : '');
+    const st = statusFilter ? statusFilter.value : 'all';
+
+    const filtered = rows.filter(row => {
+      // prefer data-name attribute (template sets data-name). Fallback to medicine cell text.
+      const nameAttr = qval(row.dataset.name);
+      const nameCell = (row.querySelector('td:nth-child(2)') || {}).textContent || '';
+      const name = nameAttr || qval(nameCell);
+
+      const status = qval(row.dataset.status || '');
+      const matchSearch = !q || name.includes(q);
+      const matchStatus = (st === 'all') || (status === st);
+      return matchSearch && matchStatus;
+    });
+
+    // if currentPage too large, reset to 1
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = 1;
+
+    renderPage(filtered);
+  }
+
+  function renderPage(filteredRows) {
+    const rows = getAllRows();
+    const total = filteredRows.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+    // hide all first
+    rows.forEach(r => r.style.display = 'none');
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageItems = filteredRows.slice(start, start + PAGE_SIZE);
+
+    pageItems.forEach((row, i) => {
+      row.style.display = '';
+      const firstCell = row.querySelector('td');
+      if (firstCell) firstCell.textContent = (start + i + 1);
+    });
+
+    // Update summary UI safely
+    if (shownCountEl) shownCountEl.textContent = pageItems.length;
+    if (totalCountEl) totalCountEl.textContent = rows.length;
+    if (pageInfo) pageInfo.textContent = `${currentPage} / ${totalPages}`;
+    if (prevPageBtn) prevPageBtn.disabled = (currentPage <= 1);
+    if (nextPageBtn) nextPageBtn.disabled = (currentPage >= totalPages);
+  }
+
+  // Event delegation for delete buttons inside tbody (works even if rows change dynamically)
+  if (tbody) {
+    tbody.addEventListener('click', (e) => {
+      const btn = e.target.closest('.deleteBtn');
+      if (!btn) return;
+      e.preventDefault();
+
+      const form = btn.closest('.deleteForm');
+      if (!form) return console.warn('Delete button clicked but no parent .deleteForm found');
+
+      formToSubmit = form;
+      const name = btn.dataset.name || (btn.closest('tr')?.querySelector('td:nth-child(2)')?.textContent?.trim()) || 'this item';
+
+      confirmTitle.textContent = `Delete "${name}"?`;
+      confirmText.textContent = `Are you sure you want to delete "${name}"? This action cannot be undone.`;
+
+      overlay.classList.add('show');
+      overlay.setAttribute('aria-hidden', 'false');
+
+      // Ensure focus goes to the confirm button for keyboard users
+      if (confirmDelete) confirmDelete.focus();
+    });
+  }
+
+  // Modal controls
+  if (confirmCancel) {
+    confirmCancel.addEventListener('click', () => {
+      overlay.classList.remove('show');
+      overlay.setAttribute('aria-hidden', 'true');
+      formToSubmit = null;
+    });
+  }
+  if (confirmDelete) {
+    confirmDelete.addEventListener('click', () => {
+      if (formToSubmit) {
+        // submit normally: server handles deletion and redirect
+        formToSubmit.submit();
+      }
+    });
+  }
+
+  // Click outside modal to close
+  if (overlay) {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove('show');
+        overlay.setAttribute('aria-hidden', 'true');
+        formToSubmit = null;
+      }
+    });
+  }
+
+  // ESC to cancel
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay && overlay.classList.contains('show')) {
+      overlay.classList.remove('show');
+      overlay.setAttribute('aria-hidden', 'true');
+      formToSubmit = null;
+    }
+  });
+
+  // Pagination controls (guarded)
+  if (prevPageBtn) {
+    prevPageBtn.addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        applyFilters();
+      }
+    });
+  }
+  if (nextPageBtn) {
+    nextPageBtn.addEventListener('click', () => {
+      // need to compute total pages from current filtered set
+      const rows = getAllRows();
+      const q = qval(searchInput ? searchInput.value : '');
+      const st = statusFilter ? statusFilter.value : 'all';
+      const filtered = rows.filter(row => {
+        const nameAttr = qval(row.dataset.name);
+        const nameCell = (row.querySelector('td:nth-child(2)') || {}).textContent || '';
+        const name = nameAttr || qval(nameCell);
+        const status = qval(row.dataset.status || '');
+        const matchSearch = !q || name.includes(q);
+        const matchStatus = (st === 'all') || (status === st);
+        return matchSearch && matchStatus;
+      });
+      const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderPage(filtered);
+      }
+    });
+  }
+
+  // Filters
+  if (searchInput) {
+    searchInput.addEventListener('input', () => { currentPage = 1; applyFilters(); });
+  }
+  if (statusFilter) {
+    statusFilter.addEventListener('change', () => { currentPage = 1; applyFilters(); });
+  }
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      if (searchInput) searchInput.value = '';
+      if (statusFilter) statusFilter.value = 'all';
+      currentPage = 1;
+      applyFilters();
+    });
+  }
+
+  // Initial run
+  applyFilters();
+
+  // Optional: update footer year if present
+  const yearEl = document.getElementById('year');
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
+});
+</script>
+
+{% endblock %}

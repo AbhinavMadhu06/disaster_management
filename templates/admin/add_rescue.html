@@ -1,0 +1,519 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}Add Emergency Rescue — Disaster Management{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-VcL9Zf4p3f4s2s2qz8k3c6t1n1m8g6z5Q1z0x7F1x8s=" crossorigin=""/>
+<style>
+:root { --primary: #147efb; --accent: #6c5ce7; --glass: rgba(255,255,255,0.06); --glass-border: rgba(255,255,255,0.10); }
+body { font-family: 'Public Sans', system-ui, -apple-system, "Segoe UI", Roboto, Arial; background: #f8fafc; color: #0f172a; }
+
+/* layout */
+#map { width: 100%; height: calc(100vh - 10.5rem); border-radius: 12px; cursor: crosshair; transition: height .15s ease; }
+@media (max-width: 1024px) { #map { height: 40vh; min-height: 300px; } }
+.autocomplete-suggestions { position: absolute; left: 0; right: 0; background: white; border: 1px solid #e5e7eb; z-index: 10000; max-height: 220px; overflow-y: auto; width: 100%; border-radius: 8px; box-shadow: 0 6px 18px rgba(2,6,23,0.08); }
+.autocomplete-suggestion { padding: 10px 12px; font-size: 14px; color: #0f172a; cursor: pointer; transition: background 0.12s ease; }
+.autocomplete-suggestion:hover { background: #f0f9ff; }
+
+/* small helpers */
+.glass { background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.lift { transition: transform .22s cubic-bezier(.2,.9,.32,1), box-shadow .22s; }
+.lift:hover { transform: translateY(-6px); box-shadow: 0 18px 40px rgba(2,6,23,0.12); }
+
+/* inline validation styles */
+.input-error { border-color: #f43f5e !important; }
+.text-error { color: #dc2626; font-size: 0.875rem; margin-top: 0.25rem; }
+
+/* ensure suggestions appear above sticky map column */
+.suggestions-wrap { position: relative; z-index: 10001; }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="flex-1 container mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+  <!-- FORM -->
+  <div class="bg-gradient-to-br from-white via-slate-50 to-blue-50 rounded-2xl shadow-2xl border border-slate-200/60 p-8 lift relative overflow-hidden">
+    <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[var(--primary)] via-sky-400 to-indigo-500 rounded-t-2xl"></div>
+
+    <h2 class="text-3xl font-black text-slate-800 mb-6 flex items-center gap-3">
+      <span class="material-icons text-[var(--primary)] text-4xl">person_add_alt</span>
+      Add Emergency Rescue
+    </h2>
+
+    <form id="rescueForm" class="space-y-8" action="{% url 'add_rescue' %}" method="post" novalidate>
+      {% csrf_token %}
+
+      <!-- Personal -->
+      <section class="bg-white/80 rounded-xl border border-slate-200 shadow-sm p-6">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="material-icons text-blue-500">badge</span>
+          <h3 class="text-lg font-bold text-slate-800">Personal Details</h3>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="name" class="block text-sm font-medium text-gray-600 mb-1">Full name</label>
+            <input id="name" name="name" type="text" maxlength="200" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none" placeholder="e.g., John Mathew" required/>
+          </div>
+
+          <div>
+            <label for="role" class="block text-sm font-medium text-gray-600 mb-1">Role</label>
+            <input id="role" name="role" type="text" maxlength="100" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none" placeholder="Fireforce, Ambulance, Medic..." required/>
+          </div>
+
+          <div>
+            <label for="email" class="block text-sm font-medium text-gray-600 mb-1">Email</label>
+            <input id="email" name="email" type="email" placeholder="john@example.com" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none" />
+            <p id="emailError" class="text-error" style="display:none;"></p>
+          </div>
+
+          <div>
+            <label for="phone" class="block text-sm font-medium text-gray-600 mb-1">Phone</label>
+            <input id="phone"  name="phone" type="tel" placeholder="+91 9876543210" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none" required />
+            <p id="phoneError" class="text-error" style="display:none;"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Location -->
+      <section class="bg-white/80 rounded-xl border border-slate-200 shadow-sm p-6">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="material-icons text-emerald-500">location_on</span>
+          <h3 class="text-lg font-bold text-slate-800">Location Details</h3>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="suggestions-wrap">
+            <label for="place" class="block text-sm font-medium text-gray-600 mb-1">Place / Address</label>
+            <input id="place" required name="place" type="text" placeholder="Start typing or click on map..." autocomplete="off" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none" />
+            <div id="suggestions" class="autocomplete-suggestions" aria-hidden="true" style="display:none;"></div>
+          </div>
+
+          <div>
+            <label for="district" class="block text-sm font-medium text-gray-600 mb-1">District</label>
+            <select id="district"  name="district" required class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none">
+              <option value="">Select a district</option>
+              <option>Alappuzha</option><option>Ernakulam</option><option>Idukki</option>
+              <option>Kannur</option><option>Kasaragod</option><option>Kollam</option>
+              <option>Kottayam</option><option>Kozhikode</option><option>Malappuram</option>
+              <option>Palakkad</option><option>Pathanamthitta</option><option>Thiruvananthapuram</option>
+              <option>Thrissur</option><option>Wayanad</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="post" class="block text-sm font-medium text-gray-600 mb-1">Post Office / Locality</label>
+            <input id="post" name="post" required type="text" maxlength="100" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none" />
+          </div>
+
+          <div>
+            <label for="pin" class="block text-sm font-medium text-gray-600 mb-1">PIN code</label>
+            <input id="pin" required name="pin" type="text" inputmode="numeric" pattern="\d{6}" maxlength="6" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none" />
+            <p id="pinError" class="text-error" style="display:none;"></p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div>
+            <label for="latitude" class="block text-sm font-medium text-gray-600 mb-1">Latitude</label>
+            <input id="latitude" name="latitude" type="number" step="any" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none" />
+          </div>
+
+          <div>
+            <label for="longitude" class="block text-sm font-medium text-gray-600 mb-1">Longitude</label>
+            <input id="longitude" name="longitude" type="number" step="any" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-3 mt-4">
+          <button type="button" id="useLocation" class="px-5 py-2.5 text-white rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 font-semibold shadow-sm">Use My Location</button>
+          <button type="button" id="clearLocation" class="px-5 py-2.5 text-gray-700 rounded-lg border border-gray-300 hover:bg-gray-100 font-semibold">Clear</button>
+        </div>
+      </section>
+
+      <!-- Additional -->
+      <section class="bg-white/80 rounded-xl border border-slate-200 shadow-sm p-6">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="material-icons text-indigo-500">assignment</span>
+          <h3 class="text-lg font-bold text-slate-800">Additional Info</h3>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4">
+          <div>
+            <label for="notes" class="block text-sm font-medium text-gray-600 mb-1">Notes</label>
+            <textarea id="notes" name="notes" rows="4" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none" placeholder="Optional notes..."></textarea>
+          </div>
+
+          <div>
+            <label for="status" class="block text-sm font-medium text-gray-600 mb-1">Verification Status</label>
+            <select id="status" name="status" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none" required>
+              <option value="Not Varified">Not Varified</option>
+              <option value="Varified">Varified</option>
+            </select>
+          </div>
+        </div>
+      </section>
+      <!-- Account Credentials -->
+<section class="bg-white/80 rounded-xl border border-slate-200 shadow-sm p-6">
+  <div class="flex items-center gap-2 mb-4">
+    <span class="material-icons text-purple-500">lock</span>
+    <h3 class="text-lg font-bold text-slate-800">Login Credentials</h3>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+      <label for="username" class="block text-sm font-medium text-gray-600 mb-1">Username</label>
+      <input id="username" name="username" type="text" maxlength="150"
+             class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none"
+             placeholder="Enter username" required />
+    </div>
+
+    <div>
+      <label for="password" class="block text-sm font-medium text-gray-600 mb-1">Password</label>
+      <input id="password" name="password" type="password"
+             class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none"
+             placeholder="Enter password" required />
+      <div id="passwordStrength" class="mt-2 text-sm font-semibold"></div>
+    </div>
+  </div>
+</section>
+
+
+      <!-- Actions -->
+      <div class="flex justify-end gap-3 pt-2">
+        <a href="" class="px-6 py-2.5 rounded-full text-sm font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300">Cancel</a>
+        <button type="submit" class="px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600">Save Rescue</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- MAP -->
+  <div class="sticky top-[5.5rem] h-[calc(100vh-7rem)]">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 h-full flex flex-col">
+      <h3 class="text-xl font-bold p-4 border-b">Select Location</h3>
+      <div id="map" class="flex-1" role="application" aria-label="Map to pick rescue location"></div>
+      <p class="text-sm text-gray-500 p-4 border-t">Click or tap the map to drop a marker. Drag the marker to fine-tune location. Address fields auto-fill.</p>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-ZGm7mOP2vTMb8GkPqXx1sZQ9G4vT0s5Qw8a2oZr+N3U=" crossorigin=""></script>
+
+<script>
+/* -------------------------
+   Setup & helpers
+   ------------------------- */
+const form = document.getElementById('rescueForm');
+
+const placeInput = document.getElementById('place');
+const suggestionsBox = document.getElementById('suggestions');
+
+const districtSelect = document.getElementById('district');
+const postInput = document.getElementById('post');
+const pinInput = document.getElementById('pin');
+const latInput = document.getElementById('latitude');
+const lngInput = document.getElementById('longitude');
+
+const emailInput = document.getElementById('email');
+const phoneInput = document.getElementById('phone');
+
+const emailError = document.getElementById('emailError');
+const phoneError = document.getElementById('phoneError');
+const pinError = document.getElementById('pinError');
+
+let marker = null;
+let debounceTimer = null;
+function debounce(fn, delay){ return function(...args){ clearTimeout(debounceTimer); debounceTimer = setTimeout(()=>fn.apply(this,args), delay); } }
+
+/* -------------------------
+   Initialize Leaflet map
+   ------------------------- */
+const map = L.map('map', { zoomControl: true }).setView([10.8505, 76.2711], 7);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+// make map responsive: when container resizes, invalidate size
+function refreshMapSize(){ setTimeout(()=>map.invalidateSize(), 120); }
+new ResizeObserver(refreshMapSize).observe(document.getElementById('map'));
+window.addEventListener('orientationchange', refreshMapSize);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshMapSize(); });
+
+/* -------------------------
+   Reverse geocode -> fill fields
+   ------------------------- */
+async function reverseGeocode(lat, lon){
+  try{
+    const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&addressdetails=1`);
+    if(!resp.ok) return null;
+    const data = await resp.json();
+    const addr = data.address || {};
+
+    // Compose place: prefer named road/locality/village/town/city
+    const placeParts = [
+      addr.road, addr.neighbourhood, addr.suburb, addr.village, addr.town, addr.city, addr.hamlet
+    ].filter(Boolean);
+    const placeName = placeParts.length ? placeParts.join(', ') : (data.display_name || '');
+
+    // Post office: Nominatim sometimes provides "postcode" and "city" - try post office first
+    const postOffice = addr.post_office || addr.suburb || addr.neighbourhood || addr.village || '';
+
+    // District detection: use state_district, county or district
+    const districtCandidates = [addr.state_district, addr.county, addr.district, addr.region].filter(Boolean);
+    let matchedDistrict = '';
+    if(districtCandidates.length){
+      // Match to one of Kerala district names in the select (case-insensitive substring)
+      const districtList = Array.from(districtSelect.options).map(o => o.value).filter(Boolean);
+      const lowerDistrictList = districtList.map(d => d.toLowerCase());
+      for(const cand of districtCandidates){
+        const clean = cand.toLowerCase().replace(' district','').trim();
+        const idx = lowerDistrictList.findIndex(d => d.includes(clean) || clean.includes(d));
+        if(idx >= 0){ matchedDistrict = districtList[idx]; break; }
+      }
+    }
+
+    // Apply values to inputs (with safe checks)
+    if(placeName) placeInput.value = placeName;
+    if(postOffice) postInput.value = postOffice;
+    if(addr.postcode) pinInput.value = addr.postcode;
+    if(matchedDistrict) districtSelect.value = matchedDistrict;
+
+    return data;
+  }catch(err){
+    console.warn('reverseGeocode failed', err);
+    return null;
+  }
+}
+
+/* -------------------------
+   Marker helpers
+   ------------------------- */
+function setMarkerAndFill(lat, lon, displayName=null){
+  lat = parseFloat(lat); lon = parseFloat(lon);
+  if(isNaN(lat) || isNaN(lon)) return;
+
+  // set inputs
+  latInput.value = lat.toFixed(6);
+  lngInput.value = lon.toFixed(6);
+
+  // place marker
+  if(marker){
+    marker.setLatLng([lat, lon]);
+  } else {
+    marker = L.marker([lat, lon], { draggable: true }).addTo(map);
+    marker.on('dragend', (e)=> {
+      const p = e.target.getLatLng();
+      setMarkerAndFill(p.lat, p.lng, null);
+      reverseGeocode(p.lat, p.lng);
+    });
+  }
+
+  // popup & map view
+  if(displayName){
+    placeInput.value = displayName;
+    marker.bindPopup(displayName).openPopup();
+  } else {
+    reverseGeocode(lat, lon).then(res => {
+      if(res?.display_name) marker.bindPopup(res.display_name).openPopup();
+    });
+  }
+
+  map.setView([lat, lon], 13);
+  refreshMapSize();
+}
+
+/* Map click -> set marker & reverse geocode */
+map.on('click', (e)=> {
+  setMarkerAndFill(e.latlng.lat, e.latlng.lng, null);
+});
+
+/* Use my location */
+document.getElementById('useLocation').addEventListener('click', ()=>{
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos => setMarkerAndFill(pos.coords.latitude, pos.coords.longitude, null),
+      err => alert('Unable to fetch location: ' + err.message)
+    );
+  } else alert('Geolocation not supported by your browser');
+});
+
+/* Clear */
+document.getElementById('clearLocation').addEventListener('click', ()=>{
+  if(marker) { map.removeLayer(marker); marker = null; }
+  [placeInput, postInput, pinInput, latInput, lngInput].forEach(i=> i.value = '');
+  districtSelect.value = '';
+  suggestionsBox.innerHTML = ''; suggestionsBox.style.display='none';
+  map.setView([10.8505, 76.2711], 7);
+});
+
+/* Manual lat/lng change -> update marker */
+latInput.addEventListener('change', ()=> {
+  const lat = parseFloat(latInput.value), lng = parseFloat(lngInput.value);
+  if(!isNaN(lat) && !isNaN(lng)) setMarkerAndFill(lat, lng, null);
+});
+lngInput.addEventListener('change', ()=> {
+  const lat = parseFloat(latInput.value), lng = parseFloat(lngInput.value);
+  if(!isNaN(lat) && !isNaN(lng)) setMarkerAndFill(lat, lng, null);
+});
+
+/* -------------------------
+   Autocomplete search (Nominatim)
+   ------------------------- */
+async function searchPlaces(q){
+  if(!q) return [];
+  try {
+    // bias search by district if selected
+    const district = districtSelect.value ? `, ${districtSelect.value}, Kerala` : ', Kerala';
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&q=${encodeURIComponent(q + district)}`);
+    if(!res.ok) return [];
+    return await res.json();
+  } catch(err){
+    console.warn('searchPlaces error', err);
+    return [];
+  }
+}
+
+const doSearch = debounce(async ()=>{
+  const q = placeInput.value.trim();
+  if(q.length < 2){ suggestionsBox.style.display='none'; suggestionsBox.innerHTML=''; return; }
+
+  const results = await searchPlaces(q);
+  suggestionsBox.innerHTML = '';
+  if(!results.length){ suggestionsBox.style.display='none'; return; }
+  suggestionsBox.style.display='block';
+  results.slice(0,6).forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'autocomplete-suggestion';
+    div.textContent = item.display_name;
+    div.addEventListener('click', ()=>{
+      // set marker and fill fields
+      setMarkerAndFill(parseFloat(item.lat), parseFloat(item.lon), item.display_name);
+      // fill district/post/pin heuristics by reverse call (but some info present in item)
+      reverseGeocode(item.lat, item.lon);
+      suggestionsBox.innerHTML = '';
+      suggestionsBox.style.display='none';
+    });
+    suggestionsBox.appendChild(div);
+  });
+}, 300);
+
+placeInput.addEventListener('input', doSearch);
+
+/* hide suggestions when clicking outside */
+document.addEventListener('click', (e)=>{
+  if(!document.querySelector('.suggestions-wrap')?.contains(e.target)){
+    suggestionsBox.innerHTML = ''; suggestionsBox.style.display='none';
+  }
+});
+
+/* -------------------------
+   Validation: email, phone, pin
+   ------------------------- */
+function showFieldError(inputEl, errorEl, message){
+  inputEl.classList.add('input-error');
+  if(errorEl){ errorEl.style.display='block'; errorEl.textContent = message; }
+}
+function clearFieldError(inputEl, errorEl){
+  inputEl.classList.remove('input-error');
+  if(errorEl){ errorEl.style.display='none'; errorEl.textContent = ''; }
+}
+
+emailInput.addEventListener('input', ()=>{
+  const val = emailInput.value.trim();
+  if(!val){ clearFieldError(emailInput, emailError); return; }
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if(!emailRe.test(val)) showFieldError(emailInput, emailError, 'Enter a valid email address.');
+  else clearFieldError(emailInput, emailError);
+});
+
+phoneInput.addEventListener('input', ()=>{
+  const val = phoneInput.value.trim();
+  if(!val){ clearFieldError(phoneInput, phoneError); return; }
+  const phoneRe = /^(\+91[-\s]?)?[6-9]\d{9}$/;
+  if(!phoneRe.test(val)) showFieldError(phoneInput, phoneError, 'Enter a valid 10-digit mobile (or +91 format).');
+  else clearFieldError(phoneInput, phoneError);
+});
+
+pinInput.addEventListener('input', ()=>{
+  const val = pinInput.value.trim();
+  if(!val){ clearFieldError(pinInput, pinError); return; }
+  if(!/^\d{6}$/.test(val)) showFieldError(pinInput, pinError, 'Enter a 6-digit PIN code.');
+  else clearFieldError(pinInput, pinError);
+});
+
+/* -------------------------
+   Final form validation before submit
+   ------------------------- */
+form.addEventListener('submit', (e)=>{
+  let ok = true;
+
+  // phone
+  const phoneVal = phoneInput.value.trim();
+  if(!phoneVal || !/^(\+91[-\s]?)?[6-9]\d{9}$/.test(phoneVal)){
+    showFieldError(phoneInput, phoneError, 'Enter a valid 10-digit mobile (or +91 format).');
+    ok = false;
+  }
+
+  // email (optional but validate if provided)
+  const emailVal = emailInput.value.trim();
+  if(emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)){
+    showFieldError(emailInput, emailError, 'Enter a valid email address.');
+    ok = false;
+  }
+
+  // pin
+  const pinVal = pinInput.value.trim();
+  if(pinVal && !/^\d{6}$/.test(pinVal)){
+    showFieldError(pinInput, pinError, 'Enter a 6-digit PIN code.');
+    ok = false;
+  }
+
+  // coordinates required (at least lat & lng must be present)
+  const lat = parseFloat(latInput.value), lng = parseFloat(lngInput.value);
+  if(isNaN(lat) || isNaN(lng)){
+    alert('Please pick a location on the map (click to drop marker or use "Use My Location").');
+    ok = false;
+  }
+
+  // district required
+  if(!districtSelect.value){
+    showFieldError(districtSelect, null, 'Please select a district.'); // will add red border via class
+    districtSelect.classList.add('input-error');
+    ok = false;
+  } else {
+    districtSelect.classList.remove('input-error');
+  }
+
+  if(!ok) e.preventDefault();
+});
+
+/* Clear input error styling on focus */
+[ emailInput, phoneInput, pinInput, districtSelect ].forEach(el => {
+  el.addEventListener('focus', ()=> {
+    clearFieldError(el, el === emailInput ? emailError : (el === phoneInput ? phoneError : (el === pinInput ? pinError : null)));
+  });
+});
+
+/* -------------------------
+   Small UX: enter key on place input triggers search suggestion selection (if visible)
+   ------------------------- */
+placeInput.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    // if there is a first suggestion, click it
+    const first = suggestionsBox.querySelector('.autocomplete-suggestion');
+    if(first) first.click();
+  }
+});
+
+/* Ensure map resizes correctly on load */
+window.addEventListener('load', ()=> { refreshMapSize(); setTimeout(refreshMapSize, 400); });
+
+</script>
+{% endblock %}

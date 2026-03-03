@@ -1,0 +1,307 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}View Camps — Disaster Management{% endblock %}
+
+{% block head_extra %}
+  <style>
+    :root {
+      --primary: #147efb;
+      --accent: #6c5ce7;
+      --muted: #6b7280;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --glass: rgba(255,255,255,0.06);
+      --glass-border: rgba(255,255,255,0.10);
+    }
+    body { font-family: 'Public Sans', system-ui, -apple-system, "Segoe UI", Roboto, Arial; background: var(--bg); color: #0f172a; }
+
+    /* Container */
+    .container { max-width: 1100px; margin: 0 auto; padding: 2.5rem 1rem; }
+
+    /* Header */
+    .page-head { display:flex; flex-direction:column; gap:8px; margin-bottom:1.25rem; }
+    @media(min-width:768px) { .page-head { flex-direction:row; align-items:center; justify-content:space-between; } }
+
+    .title {
+      display:flex; gap:12px; align-items:center;
+    }
+    .site-logo {
+      width:52px; height:52px; display:inline-flex; align-items:center; justify-content:center;
+      border-radius:10px; background:linear-gradient(180deg,var(--primary),var(--accent)); color:white;
+      font-weight:700; box-shadow: 0 6px 18px rgba(20,126,251,0.14);
+    }
+    h2.page-title { font-size:1.5rem; font-weight:700; margin:0; color:#0b1220; }
+
+    .lead { color:var(--muted); font-size:0.95rem; margin-top:2px; }
+
+    /* Panel / card */
+    .card {
+      background: var(--card);
+      border-radius:14px;
+      padding:1rem;
+      box-shadow: 0 10px 30px rgba(2,6,23,0.06);
+      border: 1px solid rgba(15,23,42,0.04);
+    }
+
+    /* Filters */
+    .filters { display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center; margin:1rem 0 1.25rem 0; }
+    .filters select, .filters input[type="text"], .filters button {
+      padding:.6rem .85rem; border-radius:10px; border:1px solid #e6e9ef; background:white;
+      font-size:.95rem;
+      box-shadow: inset 0 -1px 0 rgba(2,6,23,0.02);
+    }
+    .filters .grow { flex:1 1 260px; min-width:160px; }
+    .filters .actions { margin-left:auto; display:flex; gap:.5rem; }
+
+    .primary-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius:10px;
+      padding: .6rem .9rem;
+      font-weight:600;
+      cursor:pointer;
+      box-shadow: 0 8px 20px rgba(20,126,251,0.12);
+    }
+    .primary-btn:hover { transform: translateY(-2px); }
+
+    .ghost-btn {
+      background: transparent;
+      border:1px solid #e6e9ef;
+    }
+
+    /* Table */
+    .table-wrap { overflow-x:auto; border-radius:12px; }
+    table.inv-table { width:100%; border-collapse:collapse; min-width:760px; }
+    thead th {
+      text-align:left; font-size:.85rem; color:#475569; padding:.9rem .9rem; background:#fbfdff; border-bottom:1px solid #eef2f7;
+      position:sticky; top:0; z-index:1;
+    }
+    tbody tr { transition: background .16s ease; }
+    tbody tr:hover { background: #fbfdff; }
+    td { padding:.85rem .9rem; font-size:.95rem; color:#0f172a; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+
+    /* small text / muted */
+    .muted { color:var(--muted); font-size:.88rem; }
+
+    /* Empty state */
+    .empty { padding:2rem; text-align:center; color:var(--muted); }
+
+    /* Responsive adjustments */
+    @media (max-width:880px) {
+      thead th:nth-child(4), td:nth-child(4) { display:none; } /* hide camp name column on very small screens to keep layout neat */
+      .filters .actions { margin-left:0; }
+    }
+
+    /* subtle search highlight */
+    .highlight { background: linear-gradient(90deg, rgba(20,126,251,0.06), rgba(108,92,231,0.02)); padding:.2rem .35rem; border-radius:6px; }
+
+  </style>
+{% endblock %}
+
+{% block content %}
+<main class="container">
+  <div class="page-head">
+    <div class="title">
+      <div class="site-logo">IM</div>
+      <div>
+        <h2 class="page-title">Inventory Management</h2>
+        <div class="lead">List of stock items grouped by camp. You passed <strong>{{ camp|length }}</strong> camps.</div>
+      </div>
+    </div>
+    <div class="muted">You are viewing stocks derived from each camp's coordinator.</div>
+  </div>
+
+  <div class="card">
+    <!-- Filters -->
+    <div class="filters" role="region" aria-label="Inventory filters">
+      <!-- Camp select populated from camp queryset passed from view -->
+      <select id="campSelect" class="grow" aria-label="Filter by camp">
+        <option value="">All camps</option>
+        {% for c in camp %}
+          <option value="{{ c.name|lower }}">{{ c.name }}</option>
+        {% endfor %}
+      </select>
+
+      <!-- Item name (manual) -->
+      <input id="itemSearch" type="text" placeholder="Search item name (e.g. blanket, water)"/>
+
+      <!-- Quick exact-match dropdown of item types found on page (populated by JS) -->
+      <select id="typeSelect" aria-label="Filter by item type">
+        <option value="">Any item type</option>
+      </select>
+
+      <div class="actions">
+        <!-- Filter button removed per request — filters apply automatically -->
+        <button id="resetFilters" class="ghost-btn">Reset</button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap" id="tableWrap">
+      <table class="inv-table" aria-describedby="Inventory list">
+        <thead>
+          <tr>
+            <th>Inventory Item</th>
+            <th>Available Quantity</th>
+            <th>Coordinator Mobile</th>
+            <th>Camp Name</th>
+            <th>Last Updated</th>
+          </tr>
+        </thead>
+        <tbody id="invBody">
+          {# Loop: for each camp -> for each stock of coordinator (if any) #}
+          {% for c in camp %}
+            {% if c.coordinator %}
+              {% for s in c.coordinator.stock_set.all %}
+                <tr data-camp="{{ c.name|lower }}" data-type="{{ s.type|default:''|lower }}" data-item="{{ s.type|default:''|lower }}">
+                  <td class="item-col">{{ s.type }}</td>
+                  <td class="qty-col">{% if s.count is not None %}{{ s.count }}{% else %}-{% endif %}</td>
+                  <td class="phone-col muted">{% if c.coordinator.phone %}{{ c.coordinator.phone }}{% else %}-{% endif %}</td>
+                  <td class="camp-col">{{ c.name }}</td>
+                  <td class="date-col muted">{% if s.date %}{{ s.date }}{% else %}-{% endif %}</td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr class="no-coord" data-camp="{{ c.name|lower }}">
+                <td colspan="5" class="muted">Camp <strong>{{ c.name }}</strong> has no coordinator — no stocks available.</td>
+              </tr>
+            {% endif %}
+          {% empty %}
+            <tr><td colspan="5" class="empty">No camps found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Auto-applying filters (no Filter button). Debounced text input.
+  (function () {
+    const campSelect = document.getElementById('campSelect');
+    const itemSearch = document.getElementById('itemSearch');
+    const typeSelect = document.getElementById('typeSelect');
+    const resetBtn = document.getElementById('resetFilters');
+    const invBody = document.getElementById('invBody');
+
+    // helper: normalize text
+    const norm = s => String(s || '').trim().toLowerCase();
+
+    // debounce helper
+    function debounce(fn, wait) {
+      let t;
+      return function(...args) {
+        clearTimeout(t);
+        t = setTimeout(() => fn.apply(this, args), wait);
+      };
+    }
+
+    // Build a set of item types present in the rendered rows and populate typeSelect
+    function buildTypeOptions() {
+      if (!invBody || !typeSelect) return;
+      const rows = Array.from(invBody.querySelectorAll('tr')).filter(r => !r.classList.contains('no-coord'));
+      const types = new Set();
+      rows.forEach(r => {
+        const t = norm(r.dataset.type || r.dataset.item);
+        if (t) types.add(t);
+      });
+      // Clear existing (except default)
+      while (typeSelect.options.length > 1) typeSelect.remove(1);
+      Array.from(types).sort().forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+        typeSelect.appendChild(opt);
+      });
+    }
+
+    // Filter logic: campName (from select) + itemText (manual input) + typeSelect (exact)
+    function applyFilter() {
+      if (!invBody) return;
+      const campVal = norm(campSelect?.value || '');
+      const itemVal = norm(itemSearch?.value || '');
+      const typeVal = norm(typeSelect?.value || '');
+
+      const rows = Array.from(invBody.querySelectorAll('tr'));
+      let anyVisible = false;
+
+      rows.forEach(row => {
+        const isNoCoord = row.classList.contains('no-coord');
+
+        const rowCamp = norm(row.dataset.camp || '');
+        const rowType = norm(row.dataset.type || row.dataset.item || '');
+        const rowItem = norm(row.querySelector('.item-col')?.textContent || '');
+
+        // camp filter matches if empty or equals rowCamp
+        const campMatch = !campVal || rowCamp === campVal;
+
+        // type filter exact (if set)
+        const typeMatch = !typeVal || rowType === typeVal;
+
+        // item manual search: check substring within item name (if empty, matches all)
+        const itemMatch = !itemVal || rowItem.includes(itemVal);
+
+        const show = campMatch && typeMatch && itemMatch;
+
+        row.style.display = show ? '' : 'none';
+        if (show) anyVisible = true;
+      });
+
+      // If nothing matched, show a friendly empty row
+      if (!anyVisible) {
+        let noResults = document.getElementById('noResultsRow');
+        if (!noResults) {
+          noResults = document.createElement('tr');
+          noResults.id = 'noResultsRow';
+          noResults.innerHTML = '<td colspan="5" class="empty">No inventory rows match the current filters.</td>';
+          invBody.appendChild(noResults);
+        }
+      } else {
+        const existing = document.getElementById('noResultsRow');
+        if (existing) existing.remove();
+      }
+    }
+
+    // Reset filters and show all
+    function resetFilters() {
+      if (campSelect) campSelect.value = '';
+      if (itemSearch) itemSearch.value = '';
+      if (typeSelect) typeSelect.value = '';
+      // show all rows
+      Array.from(invBody.querySelectorAll('tr')).forEach(r => { r.style.display = ''; });
+      const existing = document.getElementById('noResultsRow'); if (existing) existing.remove();
+    }
+
+    const debouncedApply = debounce(applyFilter, 180);
+
+    // When typing, auto-apply (debounced)
+    if (itemSearch) {
+      itemSearch.addEventListener('input', debouncedApply);
+      itemSearch.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); applyFilter(); }
+      });
+    }
+
+    // When camp or type changes, apply immediately
+    if (campSelect) campSelect.addEventListener('change', applyFilter);
+    if (typeSelect) typeSelect.addEventListener('change', applyFilter);
+
+    // Reset button wired
+    if (resetBtn) resetBtn.addEventListener('click', resetFilters);
+
+    // Build type options once DOM loaded
+    document.addEventListener('DOMContentLoaded', buildTypeOptions);
+    if (document.readyState !== 'loading') buildTypeOptions();
+
+    // Expose functions for debugging
+    window._inventory = { applyFilter, resetFilters, buildTypeOptions };
+
+    // initial apply to ensure any server-side hidden rows are respected
+    applyFilter();
+  })();
+</script>
+{% endblock %}

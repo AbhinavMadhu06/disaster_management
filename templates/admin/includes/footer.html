@@ -1,0 +1,41 @@
+<footer class="bg-slate-900 text-slate-200 mt-12">
+  <div class="container mx-auto px-6 py-10">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div>
+        <h4 class="text-white font-semibold">Admin Tools</h4>
+        <p class="text-sm text-slate-300 mt-2">Export data, search logs, check system health and quick maintenance tasks.</p>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button class="px-3 py-2 rounded-md bg-[var(--primary)] text-white font-semibold">Export</button>
+          <button class="px-3 py-2 rounded-md bg-white text-slate-800 font-semibold">Clear Cache</button>
+          <button class="px-3 py-2 rounded-md bg-white/10 border border-white/10">Health</button>
+        </div>
+      </div>
+
+      <div>
+        <h4 class="text-white font-semibold">System Status</h4>
+        <div class="mt-3 space-y-2 text-sm text-slate-300">
+          <div class="flex items-center justify-between"><span>API</span><span class="text-emerald-400 font-semibold">Online</span></div>
+          <div class="flex items-center justify-between"><span>Database</span><span class="text-amber-400 font-semibold">Read-only</span></div>
+          <div class="flex items-center justify-between"><span>Uptime</span><span class="text-slate-300">6d 12h</span></div>
+        </div>
+      </div>
+
+      <div>
+        <h4 class="text-white font-semibold">Support & Docs</h4>
+        <ul class="mt-3 space-y-2 text-sm text-slate-300">
+          <li><a href="#" class="hover:underline">User Management</a></li>
+          <li><a href="#" class="hover:underline">Incident Logs</a></li>
+          <li><a href="#" class="hover:underline">Settings & Permissions</a></li>
+          <li><a href="#" class="hover:underline">Developer Docs</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="border-t border-slate-800 mt-8 pt-6 text-sm text-slate-400 text-center">
+      ©️ <span id="year"></span> Admin Panel — Disaster Management · All rights reserved.
+    </div>
+  </div>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</footer>

@@ -1,0 +1,544 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}View Camps — Disaster Management{% endblock %}
+
+{% block head_extra %}
+  <style>
+    :root { --primary: #147efb; --accent: #6c5ce7; }
+    body { font-family: 'Public Sans', system-ui, sans-serif; background: #f8fafc; color: #0f172a; }
+    .site-logo { width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:8px; background:linear-gradient(180deg,var(--primary),var(--accent)); color:white; }
+    .lift { transition: transform .22s, box-shadow .22s; }
+    .lift:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
+
+    /* map picker visuals */
+    #mapPicker { cursor: pointer; }
+    #mapPicker.selected { background: linear-gradient(90deg, #eef2ff, #f0f9ff); color: #0f172a; }
+
+    /* small helper styles */
+    .muted { color: #64748b; font-size: 0.9rem; }
+    .table-col-address { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* widen address and description columns */
+    .table-col-wide {
+      min-width: 320px;
+      max-width: 480px;
+      white-space: normal;
+      word-wrap: break-word;
+    }
+
+    /* result UI */
+    .filters-bar { align-items:center; display:flex; gap:12px; flex-wrap:wrap; }
+    .chip { background:#eef2ff; color:#064e9f; padding:6px 10px; border-radius:999px; font-weight:600; font-size:0.9rem; }
+    .result-meta { display:flex; gap:8px; align-items:center; color:#475569; margin-bottom:8px; }
+
+    /* highlight matches */
+    td mark { background: #fff19f; color: #000; padding: 0 2px; border-radius: 2px; }
+
+    .no-results {
+      text-align: center;
+      padding: 28px;
+      color: #475569;
+      font-weight: 600;
+    }
+
+    /* responsive tweaks */
+    @media (max-width: 900px) {
+      .table-col-wide { min-width: 220px; max-width: 320px; }
+    }
+  </style>
+  <style>
+  .table-col-wide.col-desc {
+    white-space: normal !important;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 400px; /* optional: limit width */
+  }
+</style>
+
+{% endblock %}
+
+{% block content %}
+<main>
+<section class="container mx-auto px-6 py-10">
+  <div class="flex items-center justify-between mb-6 gap-4">
+    <div>
+      <h3 class="text-2xl font-bold text-slate-800">Notification Management</h3>
+      <p class="mt-1 text-sm text-slate-500">View, manage, and send notifications for Admins, Camp Coordinators, Volunteers, Public, or Emergency Response Teams.</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button id="openNotifFormBtn" class="px-4 py-2 bg-[var(--primary)] text-white rounded-md font-semibold hover:bg-[var(--accent)] transition">Send Notification</button>
+    </div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="bg-white rounded-xl p-4 shadow-sm mb-4">
+    <div class="filters-bar">
+      <select name="role" id="filterRole" class="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)]">
+        <option value="">All Roles</option>
+        <option>Admin</option>
+        <option>Camp Coordinator</option>
+        <option>Volunteer</option>
+        <option>Public</option>
+        <option>Emergency Team</option>
+      </select>
+
+      <select name="district" id="filterDistrict" class="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)]">
+        <option value="">All Districts (optional)</option>
+            <option>Alappuzha</option>
+            <option>Ernakulam</option>
+            <option>Idukki</option>
+            <option>Kannur</option>
+            <option>Kasaragod</option>
+            <option>Kollam</option>
+            <option>Kottayam</option>
+            <option>Kozhikode</option>
+            <option>Malappuram</option>
+            <option>Palakkad</option>
+            <option>Pathanamthitta</option>
+            <option>Thiruvananthapuram</option>
+            <option>Thrissur</option>
+            <option>Wayanad</option>
+      </select>
+
+      <input id="filterDate" name="date" type="date" class="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)]">
+
+      <input name="q" id="filterName" type="text" placeholder="Search (any column). Try 'phone:987' or 'role:volunteer'." class="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" style="min-width:220px;">
+
+      <button id="applyFilterBtn" class="px-3 py-2 bg-[var(--primary)] text-white rounded-md font-semibold hover:bg-[var(--accent)] transition">Apply</button>
+      <button id="clearFiltersBtn" class="px-3 py-2 border rounded-md hover:bg-slate-50">Clear</button>
+    </div>
+
+    <div class="result-meta mt-3">
+      <div id="resultCount" class="chip">Showing all</div>
+      <div class="muted">Tip: you can search across all columns. Use <code>column:value</code> for exact column search.</div>
+    </div>
+  </div>
+
+  <!-- NOTIFICATION TABLE -->
+  <div class="overflow-x-auto bg-white rounded-xl shadow-sm">
+    <table class="min-w-full divide-y divide-slate-200">
+      <thead class="bg-slate-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Title</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Description</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Role</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">District</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Address</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Phone</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Latitude</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Longitude</th>
+        </tr>
+      </thead>
+      <tbody id="notificationTable" class="bg-white divide-y divide-slate-200">
+        {% for i in notification %}
+        {# store searchable values on the tr dataset, normalized to lowercase for reliable matching #}
+        <tr class="hover:bg-slate-50"
+            data-title="{{ i.title|default:'' }}"
+            data-desc="{{ i.description|default:'' }}"
+            data-role="{{ i.roll|default:'' }}"
+            data-district="{{ i.district|default:'' }}"
+            data-address="{{ i.address|default:'' }}"
+            data-phone="{{ i.phone|default:'' }}"
+            data-date="{{ i.date|date:'Y-m-d'|default:'' }}"
+            data-lat="{{ i.latitude|default:'' }}"
+            data-lng="{{ i.longitude|default:'' }}">
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-800 table-col-wide col-title">{{ i.title }}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-800 table-col-wide col-desc">{{ i.description }}</td>
+          <td class="px-6 py-4 text-sm text-slate-800 col-role">{{ i.roll }}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-800 col-district">{{ i.district }}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-800 table-col-wide col-desc">{{ i.address }}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-800 col-phone">{{ i.phone }}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-800 col-date">{{ i.date }}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-800 col-lat">{{ i.latitude }}</td>
+          <td class="px-6 py-4 text-sm text-slate-800 table-col-wide col-lng">{{ i.longitude }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tbody id="noResultsRow" class="hidden">
+        <tr>
+          <td colspan="9" class="no-results">No matching notifications found.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ADD / SEND NOTIFICATION FORM (modal) -->
+  <div id="notifFormModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden" aria-hidden="true">
+    <div class="bg-white rounded-2xl w-full max-w-2xl p-6 relative shadow-lg" role="dialog" aria-modal="true" aria-labelledby="notifFormTitle">
+      <h4 id="notifFormTitle" class="text-xl font-bold text-slate-800 mb-4">Send Notification</h4>
+      <form id="notifForm" enctype="multipart/form-data" method="post" action="{% url 'notification_post'%}" class="grid grid-cols-1 md:grid-cols-2 gap-6" novalidate>
+        {% csrf_token%}
+
+        <!-- (form fields unchanged) -->
+        <div>
+          <label for="title" class="block text-sm font-medium text-slate-700">Title</label>
+          <input id="title" name="title" type="text" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" placeholder="Short title for notification (required)">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="role" class="block text-sm font-medium text-slate-700">Role</label>
+            <select id="role" name="role" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)]">
+              <option value="Admin">Admin</option>
+              </select>
+          </div>
+
+          <div>
+            <label for="district" class="block text-sm font-medium text-slate-700">District (optional)</label>
+            <select id="district" name="district" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)]">
+              <option value="">-- Optional: Select district --</option>
+              <option>Alappuzha</option>
+              <option>Ernakulam</option>
+              <option>Idukki</option>
+              <option>Kannur</option>
+              <option>Kasaragod</option>
+              <option>Kollam</option>
+              <option>Kottayam</option>
+              <option>Kozhikode</option>
+              <option>Malappuram</option>
+              <option>Palakkad</option>
+              <option>Pathanamthitta</option>
+              <option>Thiruvananthapuram</option>
+              <option>Thrissur</option>
+              <option>Wayanad</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="phone" class="block text-sm font-medium text-slate-700">Phone (optional)</label>
+            <input id="phone" name="phone" type="tel"  class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" placeholder="+91 98765 43210">
+          </div>
+
+         <div>
+  <label for="notifDateTime" class="block text-sm font-medium text-slate-700">Date & Time</label>
+  <input 
+    id="notifDateTime" 
+    name="datetime" 
+    type="datetime-local" 
+    required
+    class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+    aria-required="true"
+    aria-label="Notification date and time"
+  >
+</div>
+        </div>
+
+        <div>
+          <label for="address" class="block text-sm font-medium text-slate-700">Address (optional)</label>
+          <textarea id="address" name="address" rows="2" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" placeholder="Full address or landmark (optional)"></textarea>
+        </div>
+
+        <!-- Location picker / current location -->
+        <div class="col-span-full">
+  <label class="block text-sm font-medium text-slate-700">Location (optional)</label>
+  <div id="mapPicker" class="w-full h-28 border rounded-md bg-slate-100 flex flex-col items-center justify-center text-slate-400 text-sm p-3">
+    <div id="mapPickerText">Click "Use current location" or enter coordinates manually.</div>
+    <div class="mt-2 flex gap-2">
+      <button type="button" id="btnUseLocation" class="px-3 py-1 bg-[var(--primary)] text-white rounded-md hover:bg-[var(--accent)]">Use current location</button>
+      <button type="button" id="btnClearLocation" class="px-3 py-1 border rounded-md hover:bg-slate-50">Clear</button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+    <div>
+      <label for="latitude" class="block text-sm font-medium text-slate-700">Latitude (optional)</label>
+      <input id="latitude" name="latitude" type="text" inputmode="decimal" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" placeholder="e.g. 28.7041">
+    </div>
+    <div>
+      <label for="longitude" class="block text-sm font-medium text-slate-700">Longitude (optional)</label>
+      <input id="longitude" name="longitude" type="text" inputmode="decimal" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" placeholder="e.g. 77.1025">
+    </div>
+  </div>
+</div>
+
+        <div>
+          <label for="details" class="block text-sm font-medium text-slate-700">Notification Details</label>
+          <textarea id="details" name="details" required rows="3" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" placeholder="Enter issue or alert details..."></textarea>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-4">
+  <button type="button" id="closeNotifForm" class="px-4 py-2 rounded-md border border-slate-300 hover:bg-slate-50">Cancel</button>
+  <button type="submit" class="px-4 py-2 bg-[var(--primary)] text-white rounded-md hover:bg-[var(--accent)]">Send</button>
+</div>
+
+      </form>
+    </div>
+  </div>
+</section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // ------------------------
+  // Modal toggle & form reset
+  // ------------------------
+  const notifModal = document.getElementById('notifFormModal');
+  const openBtn = document.getElementById('openNotifFormBtn');
+  const closeBtn = document.getElementById('closeNotifForm');
+  const notifForm = document.getElementById('notifForm');
+  const notifDateTime = document.getElementById('notifDateTime');
+  const mapPicker = document.getElementById('mapPicker');
+  const mapPickerText = document.getElementById('mapPickerText');
+  const latInput = document.getElementById('latitude');
+  const lngInput = document.getElementById('longitude');
+
+  openBtn.addEventListener('click', () => {
+    notifModal.classList.remove('hidden');
+    notifModal.setAttribute('aria-hidden', 'false');
+    // focus first input
+    document.getElementById('title').focus();
+  });
+
+  closeBtn.addEventListener('click', () => {
+    notifModal.classList.add('hidden');
+    notifModal.setAttribute('aria-hidden', 'true');
+    notifForm.reset();
+    clearLocationDisplay();
+  });
+
+  function clearLocationDisplay() {
+    mapPickerText.textContent = 'Click "Use current location" or enter coordinates manually.';
+    mapPicker.classList.remove('selected');
+  }
+
+  // ------------------------
+  // Location picker
+  // ------------------------
+  document.getElementById('btnUseLocation').addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation not supported by your browser.');
+      return;
+    }
+    mapPickerText.textContent = 'Locating… allow browser permission if prompted.';
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const lat = Number(pos.coords.latitude).toFixed(6);
+        const lng = Number(pos.coords.longitude).toFixed(6);
+        latInput.value = lat;
+        lngInput.value = lng;
+        mapPickerText.textContent = `Selected: ${lat}, ${lng}`;
+        mapPicker.classList.add('selected');
+      },
+      err => {
+        alert('Unable to retrieve location: ' + err.message);
+        clearLocationDisplay();
+      },
+      { enableHighAccuracy: true, timeout: 12000 }
+    );
+  });
+
+  document.getElementById('btnClearLocation').addEventListener('click', () => {
+    latInput.value = '';
+    lngInput.value = '';
+    clearLocationDisplay();
+  });
+
+  // ------------------------
+  // Form submit with validation
+  // ------------------------
+  notifForm.addEventListener('submit', e => {
+    const formData = new FormData(notifForm);
+    const title = formData.get('title');
+    const role = formData.get('role');
+    const details = formData.get('details');
+
+    // simple client-side validation
+    if (!title || !role || !details) {
+      e.preventDefault(); // stop submission
+      alert('Please fill Title, Role and Details.');
+      return;
+    }
+
+    // allow normal form submission to Django
+  });
+
+  // ------------------------
+  // Advanced client-side filtering & search (supports column:value)
+  // ------------------------
+  const applyBtn = document.getElementById('applyFilterBtn');
+  const clearBtn = document.getElementById('clearFiltersBtn');
+  const roleSelect = document.getElementById('filterRole');
+  const districtSelect = document.getElementById('filterDistrict');
+  const dateInput = document.getElementById('filterDate');
+  const searchInput = document.getElementById('filterName');
+  const notificationRows = () => Array.from(document.querySelectorAll('#notificationTable tr'));
+  const resultCountEl = document.getElementById('resultCount');
+  const noResultsTbody = document.getElementById('noResultsRow');
+
+  function normalize(s) {
+    return (s === null || s === undefined) ? '' : String(s).toLowerCase().trim();
+  }
+
+  function applyFilter() {
+    const role = normalize(roleSelect.value);
+    const district = normalize(districtSelect.value);
+    const date = dateInput.value; // yyyy-mm-dd
+    const rawQuery = searchInput.value.trim();
+
+    // parse column:value tokens (e.g. phone:987 role:volunteer)
+    const tokens = rawQuery.length ? rawQuery.split(/\s+/) : [];
+    const keyValueTokens = [];
+    const freeTokens = [];
+    tokens.forEach(t => {
+      const idx = t.indexOf(':');
+      if (idx > 0) {
+        const k = t.slice(0, idx).toLowerCase();
+        const v = t.slice(idx+1);
+        if (k && v) keyValueTokens.push({k, v: v.toLowerCase()});
+        else freeTokens.push(t.toLowerCase());
+      } else {
+        freeTokens.push(t.toLowerCase());
+      }
+    });
+
+    let visible = 0;
+
+    notificationRows().forEach(row => {
+      // read dataset values
+      const ds = row.dataset || {};
+      const rowData = {
+        title: normalize(ds.title),
+        desc: normalize(ds.desc),
+        role: normalize(ds.role),
+        district: normalize(ds.district),
+        address: normalize(ds.address),
+        phone: normalize(ds.phone),
+        date: normalize(ds.date),
+        lat: normalize(ds.lat),
+        lng: normalize(ds.lng)
+      };
+
+      // role/district filter
+      if (role && !rowData.role.includes(role)) { row.style.display = 'none'; return; }
+      if (district && !rowData.district.includes(district)) { row.style.display = 'none'; return; }
+
+      // date filter - compare yyyy-mm-dd strings (rowData.date already normalized)
+      if (date) {
+        // if row date includes time or different format, slice to first 10 chars
+        const rowDate = (rowData.date || '').slice(0,10);
+        if (rowDate !== date) { row.style.display = 'none'; return; }
+      }
+
+      // key:value tokens - require all to match
+      let kvFail = false;
+      for (const kv of keyValueTokens) {
+        // map common aliases to dataset keys
+        let key = kv.k;
+        if (key === 'title' || key === 't') key = 'title';
+        else if (key === 'desc' || key === 'description') key = 'desc';
+        else if (key === 'role' || key === 'roll') key = 'role';
+        else if (key === 'district' || key === 'dist') key = 'district';
+        else if (key === 'address' || key === 'addr') key = 'address';
+        else if (key === 'phone' || key === 'tel' || key === 'mobile') key = 'phone';
+        else if (key === 'date') key = 'date';
+        else if (key === 'lat' || key === 'latitude') key = 'lat';
+        else if (key === 'lng' || key === 'lon' || key === 'longitude') key = 'lng';
+
+        const val = kv.v;
+        if (!rowData[key] || !rowData[key].includes(val)) { kvFail = true; break; }
+      }
+      if (kvFail) { row.style.display = 'none'; return; }
+
+      // free-text tokens: must match somewhere among the visible columns (OR if no free tokens, pass)
+      if (freeTokens.length > 0) {
+        let freeMatch = true;
+        for (const token of freeTokens) {
+          const found = Object.values(rowData).some(v => v.includes(token));
+          if (!found) { freeMatch = false; break; }
+        }
+        if (!freeMatch) { row.style.display = 'none'; return; }
+      }
+
+      // if we get here, row matches filters — show it
+      row.style.display = '';
+      visible += 1;
+    });
+
+    // toggle no-results row
+    if (visible === 0) {
+      noResultsTbody.classList.remove('hidden');
+    } else {
+      noResultsTbody.classList.add('hidden');
+    }
+
+    resultCountEl.textContent = visible === 0 ? '0 results' : `${visible} result${visible > 1 ? 's' : ''}`;
+    // optionally highlight matches for free-text queries (simple highlight)
+    highlightMatches(rawQuery);
+  }
+
+  // debounce for user typing
+  let debounceTimer = null;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(applyFilter, 300);
+  });
+
+  // apply / clear buttons
+  applyBtn.addEventListener('click', applyFilter);
+  clearBtn.addEventListener('click', () => {
+    roleSelect.value = '';
+    districtSelect.value = '';
+    dateInput.value = '';
+    searchInput.value = '';
+    applyFilter();
+  });
+
+  // initial run (in case server-rendered filters or data exist)
+  applyFilter();
+
+  // remove existing marks and highlight matched substrings in visible rows
+  function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function removeHighlightsFromRow(row) {
+    row.querySelectorAll('mark').forEach(mark => {
+      const parent = mark.parentNode;
+      parent.replaceChild(document.createTextNode(mark.textContent), mark);
+      parent.normalize();
+    });
+  }
+
+  function highlightMatches(query) {
+    // only highlight for plain free-text queries (no key:value tokens) and if length > 0
+    if (!query || !query.trim()) {
+      // remove any existing highlights
+      notificationRows().forEach(r => removeHighlightsFromRow(r));
+      return;
+    }
+    const tokens = query.trim().split(/\s+/);
+    const anyKV = tokens.some(t => t.includes(':'));
+    if (anyKV) {
+      notificationRows().forEach(r => removeHighlightsFromRow(r));
+      return;
+    }
+
+    const q = query.trim().toLowerCase();
+    const re = new RegExp('(' + escapeRegExp(q) + ')', 'gi');
+
+    notificationRows().forEach(row => {
+      if (row.style.display === 'none') { removeHighlightsFromRow(row); return; }
+      // for each visible cell, wrap matches
+      row.querySelectorAll('td').forEach(td => {
+        removeHighlightsFromRow(row); // safe to remove before re-highlighting
+      });
+      row.querySelectorAll('td').forEach(td => {
+        const text = td.textContent;
+        if (!text) return;
+        if (text.toLowerCase().includes(q)) {
+          td.innerHTML = text.replace(re, '<mark>$1</mark>');
+        } else {
+          // ensure plain text if no match
+          td.textContent = text;
+        }
+      });
+    });
+  }
+
+</script>
+{% endblock %}

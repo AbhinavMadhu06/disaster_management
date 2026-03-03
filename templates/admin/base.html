@@ -1,0 +1,43 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+
+  <title>{% block title %}Disaster Management{% endblock %}</title>
+
+  <!-- Common Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <!-- Leaflet (optional, only loaded when needed) -->
+  {% block head_extra %}{% endblock %}
+
+  <style>
+    :root { --primary: #147efb; --accent: #6c5ce7; }
+    body { font-family: 'Public Sans', sans-serif; background: #f8fafc; color: #0f172a; }
+    .site-logo { width:44px; height:44px; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; background:linear-gradient(180deg,var(--primary),var(--accent)); color:white; }
+
+  </style>
+</head>
+<body class="antialiased">
+
+  {% include "admin/includes/navbar.html" %}
+
+  <main class="min-h-[70vh]">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% include "admin/includes/footer.html" %}
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

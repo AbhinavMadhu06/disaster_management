@@ -1,0 +1,566 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}Edit Coordinator — Disaster Management{% endblock %}
+
+{% block head_extra %}
+  <style>
+    :root{
+      --bg-1: #0B79D0; /* primary */
+      --bg-2: #6B46C1; /* accent */
+      --muted:#6b7280;
+      --card:#ffffff;
+      --glass: rgba(255,255,255,0.7);
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+
+    html,body{height:100%;}
+    body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial; background: radial-gradient(1200px 600px at 10% 10%, rgba(11,121,208,0.08), transparent 8%), linear-gradient(180deg,#f8fafc 0%, #f1f5f9 100%); color:#0f172a;}
+
+    /* container */
+    .container-card{max-width:980px; margin:2.5rem auto; border-radius:18px; overflow:hidden; box-shadow: 0 10px 30px rgba(2,6,23,0.08); border:1px solid rgba(15,23,42,0.04); background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.85));}
+
+    /* header */
+    .card-header{display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1.25rem 1.5rem; background: linear-gradient(90deg,var(--bg-1), var(--bg-2)); color:#fff}
+    .card-header h1{font-size:1.375rem; margin:0; letter-spacing:-0.2px}
+
+    /* Back button in header */
+    .back-btn{display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; background:rgba(255,255,255,0.18); border-radius:10px; color:#fff; text-decoration:none; box-shadow:0 6px 18px rgba(2,6,23,0.06)}
+    .back-btn .material-icons{font-size:20px}
+    .back-btn:focus{outline:3px solid rgba(255,255,255,0.2); outline-offset:2px}
+
+    .card-header p{opacity:0.95; margin:0.2rem 0 0; font-size:0.85rem}
+
+    /* two-column form */
+    .form-body{display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; padding:1.25rem; background:linear-gradient(180deg,var(--glass), rgba(255,255,255,0.6));}
+    @media (max-width:768px){ .form-body{grid-template-columns:1fr; padding:1rem} }
+
+    /* field */
+    .field{position:relative;}
+    .field input[type="text"], .field input[type="email"], .field input[type="tel"], .field input[type="password"], .field select, .field textarea{width:100%; border-radius:12px; border:1px solid rgba(15,23,42,0.06); padding:0.95rem 1rem; background:transparent; font-size:0.95rem}
+    .field label{position:absolute; left:1rem; top:0.9rem; font-size:0.85rem; color:var(--muted); background:transparent; transition: all .16s ease; pointer-events:none}
+
+    .field input:focus, .field textarea:focus, .field select:focus{outline:none; border-color:rgba(11,121,208,0.35); box-shadow:0 6px 18px rgba(11,121,208,0.06);}
+    .field input:focus + label, .field textarea:focus + label, .field input:not(:placeholder-shown) + label, .field textarea:not(:placeholder-shown) + label{transform:translateY(-0.9rem) scale(.86); color:var(--bg-1)}
+
+    /* helper */
+    .field-help{display:block; font-size:0.8rem; margin-top:0.45rem; color:var(--muted)}
+    .field-help.error{color:var(--danger)}
+
+    /* avatar / upload */
+    .avatar-wrap{display:flex; gap:1rem; align-items:center}
+    .avatar-preview{width:92px; height:92px; border-radius:14px; object-fit:cover; border:1px solid rgba(15,23,42,0.05); box-shadow:0 6px 20px rgba(2,6,23,0.06);}
+    .dropzone{min-width:240px; border:1px dashed rgba(15,23,42,0.08); border-radius:12px; padding:0.6rem 0.9rem; display:flex; flex-direction:column; gap:0.45rem; align-items:flex-start}
+    .dropzone .hint{font-size:0.85rem}
+
+    /* status dot */
+    .status-dot{width:10px; height:10px; border-radius:9999px; display:inline-block; margin-right:8px}
+    .status-active{background:var(--success)}
+    .status-inactive{background:#f97316}
+
+    /* password meter */
+    .pw-meter{height:8px; background:rgba(2,6,23,0.05); border-radius:999px; overflow:hidden}
+    .pw-meter > span{display:block; height:100%; width:0%; transition:width .22s ease}
+
+    .pw-weak{background:linear-gradient(90deg,#fb7185,#f97316)}
+    .pw-fair{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+    .pw-good{background:linear-gradient(90deg,#34d399,#10b981)}
+
+    /* buttons */
+    .actions{grid-column:1/-1; display:flex; justify-content:flex-end; gap:0.6rem; padding:1rem}
+    .btn{border-radius:999px; padding:0.55rem 1rem; font-weight:600; border:0; cursor:pointer}
+    .btn-muted{background:#fff; border:1px solid rgba(15,23,42,0.06)}
+    .btn-primary{background:linear-gradient(90deg,var(--bg-1),var(--bg-2)); color:white; box-shadow:0 10px 30px rgba(11,121,208,0.12)}
+
+    /* subtle entry animation */
+    .lift{transition:transform .28s cubic-bezier(.2,.9,.32,1), box-shadow .28s}
+    .lift:hover{transform:translateY(-8px)}
+
+    /* small responsive tweaks */
+    .form-col-2{grid-column:span 2}
+
+    /* focus accessibility */
+    a:focus,button:focus,input:focus,select:focus,textarea:focus{outline:3px solid rgba(11,121,208,0.12); outline-offset:2px}
+
+    /* error ring */
+    .error-ring{border-color:rgba(239,68,68,0.9) !important; box-shadow:0 0 0 4px rgba(254,226,226,0.7) !important}
+
+    /* small toast */
+    .toast{position:fixed; right:22px; bottom:22px; background:#111827; color:#fff; padding:0.6rem 0.9rem; border-radius:8px; box-shadow:0 8px 24px rgba(2,6,23,0.3); display:none}
+
+
+
+    /* Improved select (floating label + custom arrow + better focus) */
+    .field select{ -webkit-appearance:none; -moz-appearance:none; appearance:none; background-color:transparent; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>"); background-repeat:no-repeat; background-position: right 14px center; padding-right:46px;}
+
+    /* Make label float properly for selects: we toggle .filled on the field via JS */
+    .field.filled label{ transform:translateY(-0.9rem) scale(.86); color:var(--bg-1); }
+
+    /* clearer focus for selects so dropdown feels prominent */
+    .field select:focus{ box-shadow:0 10px 30px rgba(11,121,208,0.12); border-color:rgba(11,121,208,0.45); z-index:10; position:relative; }
+
+    /* reduce overlap on small screens */
+    @media (max-width:480px){ .field select{ background-position: right 10px center; padding-right:40px } }
+
+  </style>
+{% endblock %}
+
+<body class="min-h-screen">
+
+{% block content %}
+  <main class="container-card">
+    <div class="card-header">
+      <div style="display:flex; align-items:center; gap:1rem;">
+        <a href="/myapp/camp_codinators/" class="back-btn" aria-label="Back to coordinators list">
+          <span class="material-icons">arrow_back</span>
+        </a>
+        <div>
+          <h1>Edit Coordinator</h1>
+
+        </div>
+      </div>
+
+      <div style="display:flex; gap:0.5rem; align-items:center">
+
+      </div>
+    </div>
+
+    <form id="coordinatorForm" enctype="multipart/form-data" novalidate class="form-body"
+          method="post" action="{% url 'add_codinator_post' %}">
+      {% csrf_token %}
+
+      <!-- Full name -->
+      <div class="field">
+        <input id="full-name" name="full_name" type="text" placeholder=" " required minlength="2"
+               value="{{ obj.name }}"
+               class="{% if errors.full_name %}error-ring{% endif %}" aria-describedby="nameHelp" />
+        <label for="full-name">Full name</label>
+        <p id="nameHelp" class="field-help {% if errors.full_name %}error{% endif %}">
+          {% if errors.full_name %}{{ errors.full_name }}{% else %}Enter the coordinator's name.{% endif %}
+        </p>
+      </div>
+
+      <!-- Email -->
+      <div class="field">
+        <input id="email" name="email" type="email" placeholder=" " required
+               value="{{ obj.email }}"
+               class="{% if errors.email %}error-ring{% endif %}"
+               aria-describedby="emailHelp" />
+        <label for="email">Email</label>
+        <p id="emailHelp" class="field-help {% if errors.email %}error{% endif %}" role="status" aria-live="polite">
+          {% if errors.email %}{{ errors.email }}{% else %}We'll use this for login & notifications.{% endif %}
+        </p>
+      </div>
+
+      <!-- Phone -->
+      <div class="field">
+        <input id="phone" name="phone" type="tel" placeholder=" " pattern="[0-9]{10}"
+               value="{{ obj.phone }}"
+               class="{% if errors.phone %}error-ring{% endif %}"
+               aria-describedby="phoneHelp" />
+        <label for="phone">Phone</label>
+        <p id="phoneHelp" class="field-help {% if errors.phone %}error{% endif %}">
+          {% if errors.phone %}{{ errors.phone }}{% else %}10-digit mobile number (numbers only).{% endif %}
+        </p>
+      </div>
+
+      <!-- District -->
+      <div class="field">
+        <select id="district" name="district" aria-describedby="districtHelp" class="{% if errors.district %}error-ring{% endif %}">
+          <option value="">{% if obj.district %}{{ obj.district }}{% else %}Select district{% endif %}</option>
+          <option value="Thiruvananthapuram" {% if obj.district == 'Thiruvananthapuram' %}selected{% endif %}>Thiruvananthapuram</option>
+          <option value="Kollam" {% if obj.district == 'Kollam' %}selected{% endif %}>Kollam</option>
+          <option value="Pathanamthitta" {% if obj.district == 'Pathanamthitta' %}selected{% endif %}>Pathanamthitta</option>
+          <option value="Alappuzha" {% if obj.district == 'Alappuzha' %}selected{% endif %}>Alappuzha</option>
+          <option value="Kottayam" {% if obj.district == 'Kottayam' %}selected{% endif %}>Kottayam</option>
+          <option value="Idukki" {% if obj.district == 'Idukki' %}selected{% endif %}>Idukki</option>
+          <option value="Ernakulam" {% if obj.district == 'Ernakulam' %}selected{% endif %}>Ernakulam</option>
+          <option value="Thrissur" {% if obj.district == 'Thrissur' %}selected{% endif %}>Thrissur</option>
+          <option value="Palakkad" {% if obj.district == 'Palakkad' %}selected{% endif %}>Palakkad</option>
+          <option value="Malappuram" {% if obj.district == 'Malappuram' %}selected{% endif %}>Malappuram</option>
+          <option value="Kozhikode" {% if obj.district == 'Kozhikode' %}selected{% endif %}>Kozhikode</option>
+          <option value="Wayanad" {% if obj.district == 'Wayanad' %}selected{% endif %}>Wayanad</option>
+          <option value="Kannur" {% if obj.district == 'Kannur' %}selected{% endif %}>Kannur</option>
+          <option value="Kasaragod" {% if obj.district == 'Kasaragod' %}selected{% endif %}>Kasaragod</option>
+        </select>
+        <label for="district">District (Kerala)</label>
+        <p id="districtHelp" class="field-help {% if errors.district %}error{% endif %}">
+          {% if errors.district %}{{ errors.district }}{% else %}Choose the district for this coordinator.{% endif %}
+        </p>
+      </div>
+
+      <!-- Place / Address -->
+      <div class="field" style="grid-column: 1 / -1;">
+        <textarea id="place-address" name="address" placeholder=" " rows="3" class="{% if errors.address %}error-ring{% endif %}">{{ obj.place }}</textarea>
+        <label for="place-address">Place / Address</label>
+        <p id="placeHelp" class="field-help {% if errors.address %}error{% endif %}">
+          {% if errors.address %}{{ errors.address }}{% else %}Optional: more details about address or place within the district.{% endif %}
+        </p>
+      </div>
+
+      <!-- Post Office -->
+      <div class="field">
+        <input id="post-office" name="post_office" type="text" placeholder=" " value="{{ obj.post }}" class="{% if errors.post_office %}error-ring{% endif %}" />
+        <label for="post-office">Post Office</label>
+        {% if errors.post_office %}
+          <p class="field-help error">{{ errors.post_office }}</p>
+        {% else %}
+          <p class="field-help">Post office name (optional).</p>
+        {% endif %}
+      </div>
+
+      <!-- PIN -->
+      <div class="field">
+        <input id="pin" name="pin" type="text" placeholder=" " inputmode="numeric" pattern="[0-9]{6}" value="{{ obj.pin }}" class="{% if errors.pin %}error-ring{% endif %}" aria-describedby="pinHelp" />
+        <label for="pin">PIN</label>
+        <p id="pinHelp" class="field-help {% if errors.pin %}error{% endif %}">
+          {% if errors.pin %}{{ errors.pin }}{% else %}6-digit postal PIN code.{% endif %}
+        </p>
+      </div>
+
+      <!-- Photo upload + preview (full width) -->
+      <div style="grid-column: 1 / -1;">
+        <label class="field-help" style="font-weight:600; margin-bottom:0.5rem">Photo</label>
+        <div style="display:flex; gap:1rem; align-items:center;">
+          <img id="avatarPreview" class="avatar-preview" src="{% if obj.photo %}{{ obj.photo.url }}{% endif %}" alt="Avatar preview" onerror="this.style.display='none'"/>
+          <div class="dropzone" id="dropzone">
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+              <span class="material-icons">photo_camera</span>
+              <strong>Upload JPG/PNG</strong>
+            </div>
+            <div class="field-help">Drag & drop or click to browse — square photos work best. Max 5MB.</div>
+            <input id="photo-upload" name="photo_upload" accept="image/jpeg,image/png" type="file" class="sr-only" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="field">
+        <select id="status" name="status" required class="{% if errors.status %}error-ring{% endif %}">
+          <option value="">{% if obj.status %}{{ obj.status }}{% else %}Select status{% endif %}</option>
+          <option value="Active" {% if obj.status == 'Active' %}selected{% endif %}>Active</option>
+          <option value="Inactive" {% if obj.status == 'Inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+        <label for="status">Status</label>
+        <p class="field-help {% if errors.status %}error{% endif %} mt-2">
+          {% if errors.status %}{{ errors.status }}{% else %}Set coordinator status as Active or Inactive.{% endif %}
+        </p>
+      </div>
+
+      <!-- Username -->
+      <div class="field">
+        <input id="username" name="username" type="text" placeholder=" " minlength="3" value="{{ obj.username }}" class="{% if errors.username %}error-ring{% endif %}" aria-describedby="usernameHelp" />
+        <label for="username">Username</label>
+        <p id="usernameHelp" class="field-help {% if errors.username %}error{% endif %}">
+          {% if errors.username %}{{ errors.username }}{% else %}Minimum 3 characters, no spaces.{% endif %}
+        </p>
+      </div>
+
+      <!-- Password + strength -->
+      <div class="field">
+        <div style="position:relative">
+          <input id="password" name="password" type="password" placeholder=" " minlength="8" value="{{ obj.password }}" class="{% if errors.password %}error-ring{% endif %}" aria-describedby="passwordHelp" />
+          <button id="togglePassword" type="button" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:transparent; border:0; cursor:pointer" aria-label="Show or hide password">
+            <span id="toggleIcon" class="material-icons">visibility_off</span>
+          </button>
+        </div>
+        <label for="password">Password</label>
+        <p id="passwordHelp" class="field-help {% if errors.password %}error{% endif %}">
+          {% if errors.password %}{{ errors.password }}{% else %}Min 8 characters. Include letters & numbers for a stronger password.{% endif %}
+        </p>
+
+        <div class="password-strength-meter mt-2">
+          <span id="pwStrengthBar"></span>
+        </div>
+        <div id="pwStrengthText" class="field-help" aria-live="polite"></div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="actions">
+        <button type="button" id="cancelBtn" class="btn btn-muted">Cancel</button>
+        <button type="submit" class="btn btn-primary">Edit Coordinator</button>
+      </div>
+    </form>
+  </main>
+
+  {% if messages %}
+  <div id="toast" class="fixed bottom-5 right-5 bg-white border border-gray-200 shadow-xl rounded-xl px-5 py-4 text-sm font-medium text-gray-900 z-50 animate-slide-up flex items-center gap-3">
+    {% for message in messages %}
+      {% if message.tags == 'success' %}
+        <span class="text-green-500">✔</span>
+      {% elif message.tags == 'error' %}
+        <span class="text-red-500">✖</span>
+      {% endif %}
+      <p class="{% if message.tags == 'success' %}text-green-700{% elif message.tags == 'error' %}text-red-700{% endif %}">{{ message }}</p>
+    {% endfor %}
+  </div>
+  <style>
+    @keyframes slide-up { from { transform: translateY(100%); opacity:0 } to { transform: translateY(0); opacity:1 } }
+    .animate-slide-up { animation: slide-up 0.35s ease-out forwards; }
+  </style>
+  <script>
+    setTimeout(() => { const toast = document.getElementById('toast'); if (toast) { toast.style.opacity = '0'; toast.style.transform='translateY(18px)'; setTimeout(()=>toast.remove(),350); } }, 4200);
+  </script>
+  {% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // footer year safe
+  const yearEl = document.getElementById('year'); if(yearEl) yearEl.textContent = new Date().getFullYear();
+
+  // --- Photo drag & preview ---
+  const dropzone = document.getElementById('dropzone');
+  const photoInput = document.getElementById('photo-upload');
+  const avatarPreview = document.getElementById('avatarPreview');
+
+  if (dropzone && photoInput) {
+    dropzone.addEventListener('click', () => photoInput.click());
+    ['dragenter','dragover'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.style.borderColor = 'rgba(11,121,208,0.45)'; }));
+    ['dragleave','drop'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.style.borderColor = 'rgba(15,23,42,0.08)'; }));
+    dropzone.addEventListener('drop', (e) => { const f = e.dataTransfer.files[0]; if(f) handleFile(f); });
+    photoInput.addEventListener('change', (e) => { const f = e.target.files[0]; if(f) handleFile(f); });
+  }
+  function handleFile(file){
+    if(!file) return;
+    if(file.size > 5 * 1024 * 1024){ alert('File too large (max 5MB)'); photoInput.value = ''; return; }
+    if(!/image\/(jpeg|png)/.test(file.type)){ alert('Only JPG/PNG allowed'); photoInput.value = ''; return; }
+    const url = URL.createObjectURL(file); avatarPreview.src = url; avatarPreview.style.display = 'block';
+  }
+
+  // --- Floating label helpers for inputs/selects/textarea ---
+  function setFilledState(field, el){
+    const v = (el.value || '').toString().trim();
+    if(v !== '') field.classList.add('filled'); else field.classList.remove('filled');
+  }
+
+  function enhanceFields(){
+    document.querySelectorAll('.field').forEach(field => {
+      const el = field.querySelector('input, textarea, select');
+      if(!el) return;
+
+      // initial
+      setFilledState(field, el);
+
+      const ev = el.tagName.toLowerCase() === 'select' ? 'change' : 'input';
+      el.addEventListener(ev, () => setFilledState(field, el));
+
+      el.addEventListener('focus', () => { field.classList.add('filled'); field.style.zIndex = 30; });
+      el.addEventListener('blur', () => { setFilledState(field, el); field.style.zIndex = ''; });
+
+      const lbl = field.querySelector('label');
+      if(lbl) lbl.addEventListener('click', () => el.focus());
+    });
+  }
+  enhanceFields();
+
+  // ensure selects have placeholder as first option (non-selected)
+  document.querySelectorAll('.field select').forEach(s => {
+    if(s.options.length && s.options[0].value !== '') {
+      const ph = document.createElement('option'); ph.value = ''; ph.text = 'Select'; s.insertBefore(ph, s.firstChild);
+    }
+  });
+
+  // --- Password toggle + improved meter ---
+  const pwInput = document.getElementById('password');
+  const toggleBtn = document.getElementById('togglePassword');
+  const toggleIcon = document.getElementById('toggleIcon');
+  const pwBar = document.getElementById('pwStrengthBar');
+  const pwText = document.getElementById('pwStrengthText');
+
+  if(toggleBtn && pwInput && toggleIcon){
+    toggleBtn.addEventListener('click', () => {
+      const type = pwInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      pwInput.setAttribute('type', type);
+      toggleIcon.textContent = type === 'password' ? 'visibility_off' : 'visibility';
+      toggleBtn.setAttribute('aria-pressed', String(type === 'text'));
+    });
+  }
+
+  function calcStrength(pw){
+    let s = 0;
+    if(pw.length >= 8) s++;
+    if(pw.length >= 12) s++;
+    if(/[0-9]/.test(pw)) s++;
+    if(/[A-Z]/.test(pw)) s++;
+    if(/[^A-Za-z0-9]/.test(pw)) s++;
+    return s; // 0..5
+  }
+
+  function updateMeter(){
+    if(!pwInput || !pwBar) return;
+    const s = calcStrength(pwInput.value || '');
+    const percent = Math.min(100, Math.round((s / 5) * 100));
+    pwBar.style.width = (pwInput.value.length === 0 ? '0%' : percent + '%');
+    pwBar.classList.remove('pw-weak','pw-fair','pw-good');
+    if(s <= 1) pwBar.classList.add('pw-weak');
+    else if(s <= 3) pwBar.classList.add('pw-fair');
+    else pwBar.classList.add('pw-good');
+
+    if(pwText) pwText.textContent = pwInput.value.length === 0 ? '' : (s <=1 ? 'Very weak — needs min 8 chars' : (s <=3 ? 'Fair — add numbers, uppercase or special chars' : 'Strong password'));
+  }
+  updateMeter();
+  if(pwInput) pwInput.addEventListener('input', updateMeter);
+
+  // --- Simple live validation & username availability (keeps existing endpoints) ---
+  const emailField = document.getElementById('email');
+  const phoneField = document.getElementById('phone');
+  const pinField = document.getElementById('pin');
+  const usernameField = document.getElementById('username');
+
+  function showHelp(elId, msg, isError=false){
+    const el = document.getElementById(elId);
+    if(!el) return;
+    el.textContent = msg;
+    el.classList.toggle('error', !!isError);
+  }
+
+  if(emailField){
+    emailField.addEventListener('input', () => {
+      const v = emailField.value.trim();
+      if(!v){ showHelp('emailHelp', "We'll use this for login & notifications."); return; }
+      const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+      showHelp('emailHelp', ok ? 'Looks good.' : 'Enter a valid email address.', !ok);
+    });
+  }
+
+  if(phoneField){
+    phoneField.addEventListener('input', () => {
+      const digits = phoneField.value.replace(/\D/g,'');
+      const ok = digits.length === 10;
+      showHelp('phoneHelp', ok ? 'Phone number looks valid.' : 'Enter a 10-digit phone number.', !ok && digits.length > 0);
+    });
+  }
+
+  if(pinField){
+    pinField.addEventListener('input', () => {
+      const ok = /^[0-9]{6}$/.test(pinField.value);
+      showHelp('pinHelp', ok ? 'Valid PIN.' : 'Enter a 6-digit PIN.', !ok && pinField.value.length > 0);
+    });
+  }
+
+  // debounce helper
+  function debounce(fn, delay){ let t; return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn(...args), delay); }; }
+
+  let usernameAbortController = null;
+  async function checkUsernameServer(username){
+    try{
+      if(usernameAbortController) usernameAbortController.abort();
+      usernameAbortController = new AbortController();
+      const csrftoken = document.cookie.split('; ').find(r=> r.startsWith('csrftoken='))?.split('=')[1] || '';
+      const res = await fetch('/myapp/check_username/', {
+        method: 'POST',
+        body: JSON.stringify({ username }),
+        credentials: 'same-origin',
+        signal: usernameAbortController.signal,
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken }
+      });
+      if(!res.ok) throw new Error('Network response not ok');
+      const data = await res.json();
+      return data.available === true;
+    } catch(err){
+      if(err.name === 'AbortError') return null;
+      return null;
+    }
+  }
+
+  const debouncedCheck = debounce(async (val) => {
+    if(!val || val.length < 3 || /\s/.test(val)){ showHelp('usernameHelp','Min 3 chars, no spaces.', true); return; }
+    showHelp('usernameHelp','Checking availability...');
+    const ok = await checkUsernameServer(val);
+    if(ok === true) showHelp('usernameHelp','Available — good to go.');
+    else if(ok === false) showHelp('usernameHelp','Username already taken. Try another.', true);
+    else showHelp('usernameHelp','Server check unavailable — will be validated on submit.');
+  }, 600);
+
+  if(usernameField) usernameField.addEventListener('input', (e) => {
+    const val = usernameField.value;
+    const ok = val.length >= 3 && !/\s/.test(val);
+    showHelp('usernameHelp', ok ? 'Checking availability...' : 'Min 3 chars, no spaces.', !ok);
+    if(ok) debouncedCheck(val);
+  });
+
+  // --- Form submit validation ---
+  const form = document.getElementById('coordinatorForm');
+
+  function clearErrors(){
+    document.querySelectorAll('.field-error').forEach(n => n.remove());
+    document.querySelectorAll('.error-ring').forEach(n => n.classList.remove('error-ring'));
+  }
+
+  function showErrors(errors){
+    for(const [field, msg] of Object.entries(errors)){
+      const el = form.querySelector(`[name="${field}"]`);
+      if(!el) continue;
+      el.classList.add('error-ring');
+      const p = document.createElement('p');
+      p.className = 'field-error field-help error';
+      p.textContent = msg;
+      el.closest('.field')?.appendChild(p);
+    }
+    const first = form.querySelector('.error-ring');
+    if(first) first.scrollIntoView({ behavior:'smooth', block:'center' });
+  }
+
+  if(form){
+    form.addEventListener('submit', async (e) => {
+      // keep default server post - we still validate client-side
+      clearErrors();
+
+      const fields = {
+        full_name: form.full_name.value.trim(),
+        email: form.email.value.trim(),
+        phone: form.phone.value.trim(),
+        district: form.district.value,
+        address: form.address.value.trim(),
+        post_office: form.post_office?.value.trim() || '',
+        pin: form.pin.value.trim(),
+        username: form.username.value.trim(),
+        password: form.password.value,
+        status: form.status.value,
+        photo_upload: photoInput?.files?.[0]
+      };
+
+      const errors = {};
+      if(fields.full_name.length < 2) errors.full_name = "Full name must be at least 2 characters.";
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email)) errors.email = "Invalid email address.";
+      if(!/^\d{10}$/.test(fields.phone)) errors.phone = "Enter 10-digit phone number.";
+      if(!fields.district) errors.district = "Select district.";
+      if(!fields.address) errors.address = "Enter address.";
+      if(!fields.post_office) errors.post_office = "Enter post office.";
+      if(!/^\d{6}$/.test(fields.pin)) errors.pin = "Enter valid 6-digit PIN.";
+      if(fields.username.length < 3) errors.username = "Username must be at least 3 characters.";
+      if(fields.password.length < 8) errors.password = "Password must be at least 8 characters.";
+      if(!fields.photo_upload) errors.photo_upload = "Upload a photo.";
+      else if(fields.photo_upload.size > 5 * 1024 * 1024) errors.photo_upload = "Photo must be under 5MB.";
+      if(!fields.status) errors.status = "Select status.";
+
+      if(Object.keys(errors).length > 0){
+        e.preventDefault();
+        showErrors(errors);
+        return;
+      }
+
+      // final username server check
+      const available = await checkUsernameServer(fields.username);
+      if(available === false){
+        e.preventDefault();
+        showErrors({ username: "Username already taken. Choose another." });
+        return;
+      }
+
+      // if all passes, allow normal submission (no e.preventDefault())
+    });
+  }
+
+  // cancel button
+  document.getElementById('cancelBtn')?.addEventListener('click', () => {
+    if(confirm('Discard changes and return to coordinator list?')) window.location.href = '/myapp/camp_codinators/';
+  });
+
+});
+</script>
+{% endblock %}

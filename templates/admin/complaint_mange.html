@@ -1,0 +1,282 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}Complaint Management — Disaster Management{% endblock %}
+
+{% block head_extra %}
+<style>
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text-main);
+    margin: 0;
+    padding: 0;
+  }
+
+  main {
+    padding: 40px 20px;
+  }
+
+  .container {
+    max-width: 1150px;
+    margin: auto;
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.05);
+    padding: 25px 30px 40px;
+  }
+
+  h1.page-title {
+    
+    color: black;
+    border-radius: var(--radius);
+    padding: 20px 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    margin: -25px -30px 25px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+    font-size: 1.7rem;
+    font-weight: 600;
+  }
+
+  .filters {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+
+  select, input[type="search"] {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    color: var(--text-main);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 15px;
+  }
+
+  th, td {
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    text-align: left;
+  }
+
+  th {
+    background: #f1f5f9;
+    text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 70px;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    resize: vertical;
+    font-family: inherit;
+    display: none; /* hidden initially */
+    margin-top: 8px;
+  }
+
+  .btn {
+    padding: 8px 14px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+    margin-top: 6px;
+  }
+
+  
+
+  .status {
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 13px;
+  }
+
+  .status-replied {
+    background: #dcfce7;
+    color: var(--success);
+    border: 1px solid #86efac;
+  }
+
+  .status-pending {
+    background: #fee2e2;
+    color: var(--danger);
+    border: 1px solid #fecaca;
+  }
+
+  footer {
+    margin-top: 30px;
+    text-align: center;
+    color: #64748b;
+    font-size: 13px;
+  }
+
+  @media (max-width: 800px) {
+    table, thead, tbody, th, td, tr { display: block; }
+    th { display: none; }
+    td {
+      padding: 10px;
+      border: none;
+      border-bottom: 1px solid var(--border);
+    }
+    td::before {
+      content: attr(data-label);
+      font-weight: 600;
+      display: block;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<main>
+  <div class="container">
+    <h1 class="page-title">
+      Complaint Management
+    </h1>
+
+    <div class="filters">
+      <label>
+        <select id="filterStatus">
+          <option value="all">All Complaints</option>
+          <option value="replied">Replied</option>
+          <option value="notreplied">Not Replied</option>
+        </select>
+      </label>
+
+      <label>
+        <select id="sortDate">
+          <option value="latest">Latest First</option>
+          <option value="oldest">Oldest First</option>
+        </select>
+      </label>
+
+      <div class="search-box">
+        <input type="search" id="searchBox" placeholder="Search complaint or user...">
+      </div>
+    </div>
+
+    {% if messages %}
+      <div class="message-area">
+        {% for message in messages %}
+          <div class="message">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <table id="complaintTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>User</th>
+          <th>Complaint</th>
+          <th>Reply</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in obj %}
+          <tr data-status="{% if c.reply %}replied{% else %}notreplied{% endif %}">
+            <td data-label="#"> {{ forloop.counter }}</td>
+            <td data-label="User">{{ c.login_id.username }}</td>
+            <td data-label="Complaint" style="white-space: pre-wrap;">{{ c.complaint }}</td>
+            <td data-label="Reply" style="white-space: pre-wrap;">{{ c.reply|default:"— No reply —" }}</td>
+            <td data-label="Date" data-date="{{ c.date|date:'Y-m-d H:i:s' }}">{{ c.date|date:"M d, Y H:i" }}</td>
+            <td data-label="Status">
+              {% if c.reply %}
+                <span class="status status-replied">Replied</span>
+              {% else %}
+                <span class="status status-pending">Pending</span>
+              {% endif %}
+            </td>
+            <td data-label="Action">
+              <form method="post" action="{% url 'complaint_manage_replay' c.id %}">
+                {% csrf_token %}
+                <button type="button" class="btn toggle-reply">Reply</button>
+                <textarea name="replay" placeholder="Write a reply...">{{ c.reply }}</textarea>
+                <button type="submit" class="btn send-btn" style="display:none;">Send</button>
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" style="text-align:center;">No complaints found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const filterStatus = document.getElementById('filterStatus');
+  const sortDate = document.getElementById('sortDate');
+  const searchBox = document.getElementById('searchBox');
+  const tableBody = document.querySelector('#complaintTable tbody');
+
+  // Filter + Sort + Search
+  function updateTable() {
+    const rows = Array.from(tableBody.querySelectorAll('tr'));
+    const statusFilter = filterStatus.value;
+    const searchTerm = searchBox.value.toLowerCase();
+    const sortType = sortDate.value;
+
+    rows.forEach(row => {
+      const status = row.dataset.status;
+      const text = row.innerText.toLowerCase();
+      const matchSearch = text.includes(searchTerm);
+      const matchStatus = (statusFilter === 'all' || status === statusFilter);
+      row.style.display = (matchSearch && matchStatus) ? '' : 'none';
+    });
+
+    const sortedRows = rows.sort((a, b) => {
+      const dateA = new Date(a.querySelector('[data-date]').dataset.date);
+      const dateB = new Date(b.querySelector('[data-date]').dataset.date);
+      return sortType === 'latest' ? dateB - dateA : dateA - dateB;
+    });
+    sortedRows.forEach(r => tableBody.appendChild(r));
+  }
+
+  filterStatus.addEventListener('change', updateTable);
+  sortDate.addEventListener('change', updateTable);
+  searchBox.addEventListener('input', updateTable);
+
+  // Toggle Reply Textarea visibility
+  document.querySelectorAll('.toggle-reply').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const form = btn.closest('form');
+      const textarea = form.querySelector('textarea');
+      const sendBtn = form.querySelector('.send-btn');
+      const isVisible = textarea.style.display === 'block';
+      textarea.style.display = isVisible ? 'none' : 'block';
+      sendBtn.style.display = isVisible ? 'none' : 'inline-block';
+      btn.textContent = isVisible ? 'Reply' : 'Cancel';
+    });
+  });
+</script>
+{% endblock %}

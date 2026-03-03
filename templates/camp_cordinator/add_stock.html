@@ -1,0 +1,98 @@
+{% extends "camp_cordinator/base.html" %}
+{% load static %}
+
+{% block title %}Add Stock — Camp Coordinator{% endblock %}
+
+{% block head_extra %}
+<style>
+  body {
+    font-family: 'Public Sans', sans-serif;
+    background: #f9fafb;
+    color: #0f172a;
+  }
+  .page-container {
+    max-width: 500px;
+    margin: 3rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  }
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 0.75rem;
+    text-align: center;
+  }
+  p.sub {
+    color: #6b7280;
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  form {
+    display: grid;
+    gap: 1.25rem;
+  }
+  input[type="text"], input[type="number"] {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    font-size: 1rem;
+    width: 100%;
+  }
+  input:focus {
+    border-color: #147efb;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(20, 126, 251, 0.15);
+  }
+  .btn-group {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .btn {
+    padding: 0.75rem 1.25rem;
+    font-weight: 600;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .btn-primary {
+    background: linear-gradient(90deg, #147efb, #6c5ce7);
+    color: white;
+    flex: 1;
+  }
+  .btn-outline {
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #0f172a;
+    flex: 1;
+  }
+  .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+  <h1>Add New Stock</h1>
+  <p class="sub">Enter details to add a new stock item to the inventory.</p>
+  <form method="post" action="">
+    {% csrf_token %}
+    <div>
+      <input type="text" name="type" placeholder="Item Type" required />
+    </div>
+    <div>
+      <input type="number" name="count" placeholder="Item Count" min="0" required />
+    </div>
+    <div class="btn-group">
+      <a href="{% url 'stock_management' %}" class="btn btn-outline">Cancel</a>
+      <button type="submit" class="btn btn-primary">Add Stock</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

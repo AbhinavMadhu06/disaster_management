@@ -1,0 +1,361 @@
+{% extends "camp_cordinator/base.html" %}
+{% load static %}
+
+{% block title %}Cordinator Profile — Disaster Management{% endblock %}
+
+{% block head_extra %}
+<style>
+    body { font-family: 'Public Sans', system-ui, -apple-system, "Segoe UI", Roboto, Arial; background:#f8fafc; color:#0f172a; }
+    .site-logo{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;background:linear-gradient(180deg,#147efb,#6c5ce7);color:white;}
+    .modal-backdrop{background:rgba(0,0,0,0.45);}
+    table{border-collapse:collapse;}
+    /* small responsive tweak */
+    @media (max-width: 640px) {
+      .hide-xs { display:none; }
+    }
+  </style>
+{% endblock %}
+{% block content %}
+  <main class="container mx-auto px-6 py-8">
+    <div class="mb-4 flex items-center justify-between">
+      <h1 class="text-2xl font-extrabold">Alerts</h1>
+      <div class="text-sm text-slate-600">Total: <strong id="totalCount">{{ alerts|length }}</strong></div>
+    </div>
+
+    <!-- Controls: search, rescue filter, sort -->
+    <div class="mb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+      <div class="flex gap-3 w-full sm:w-auto">
+        <input id="globalSearch" type="search" placeholder="Search user, rescue, phone, alert, status, coords..." class="rounded-2xl border border-slate-200 px-4 py-2 text-sm w-full sm:w-80">
+        <select id="rescueFilter" class="rounded-2xl border border-slate-200 px-3 py-2 text-sm">
+          <option value="all">All Rescue Teams</option>
+        </select>
+        <select id="sortOrder" class="rounded-2xl border border-slate-200 px-3 py-2 text-sm">
+          <option value="default">Default</option>
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+        <button id="resetFilters" class="px-3 py-2 rounded-2xl border border-slate-200 text-sm">Reset</button>
+      </div>
+      <div class="text-sm text-slate-600">Shown: <strong id="shownCount">0</strong></div>
+    </div>
+
+    <!-- Stationary table rendered server-side -->
+    <div class="rounded-xl bg-white p-4 shadow-sm overflow-x-auto">
+      <table id="alertsTable" class="min-w-full text-sm">
+        <thead class="bg-slate-50">
+          <tr>
+            <th class="px-4 py-3 text-left w-12">S. No</th>
+            <th class="px-4 py-3 text-left">User ID</th>
+            <th class="px-4 py-3 text-left">Rescue Team</th>
+            <th class="px-4 py-3 text-left">Rescue Phone</th>
+            <th class="px-4 py-3 text-left">Alert</th>
+            <th class="px-4 py-3 text-left">Status</th>
+            <th class="px-4 py-3 text-left">Lat / Lon</th>
+            <th class="px-4 py-3 text-center w-28">View</th>
+          </tr>
+        </thead>
+        <tbody id="alertsBody">
+          {% if alerts %}
+            {% for a in alerts %}
+              {# prepare date attribute if you have one (e.g. a.date) otherwise leave empty #}
+              <tr class="hover:bg-slate-50"
+                  data-id="{{ a.id }}"
+                  data-user="{{ a.user_id|default:'' }}"
+                  data-rescue-name="{% if a.emergency_rescue %}{{ a.emergency_rescue.name|escapejs }}{% endif %}"
+                  data-rescue-phone="{% if a.emergency_rescue %}{{ a.emergency_rescue.phone|default:'' }}{% endif %}"
+                  data-alert="{{ a.alert|escapejs }}"
+                  data-status="{{ a.status|default:'' }}"
+                  data-lat="{{ a.latitude|default:'' }}"
+                  data-lon="{{ a.longitude|default:'' }}"
+                  data-date="{{ a.date|default:'' }}"
+              >
+                <td class="px-4 py-3">{{ forloop.counter }}</td>
+                <td class="px-4 py-3 font-medium">{{ a.user_id|default:"—" }}</td>
+                <td class="px-4 py-3">
+                  {% if a.emergency_rescue %}{{ a.emergency_rescue.name }}{% else %}—{% endif %}
+                </td>
+                <td class="px-4 py-3 hide-xs">
+                  {% if a.emergency_rescue and a.emergency_rescue.phone %}{{ a.emergency_rescue.phone }}{% else %}—{% endif %}
+                </td>
+                <td class="px-4 py-3 max-w-xs break-words">{{ a.alert|truncatechars:80 }}</td>
+                <td class="px-4 py-3">{{ a.status|default:"—" }}</td>
+                <td class="px-4 py-3">
+                  {% if a.latitude and a.longitude %}
+                    {{ a.latitude }} , {{ a.longitude }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+
+                <!-- encode all necessary data into data-* attributes for the modal button too -->
+                <td class="px-4 py-3 text-center">
+                  <button
+                    class="view-btn inline-flex items-center gap-2 px-3 py-1 rounded-2xl bg-[var(--primary,#147efb)] text-white text-sm"
+                    type="button"
+                    data-id="{{ a.id }}"
+                    data-user-id="{{ a.user_id|default:'' }}"
+                    data-rescue-name="{% if a.emergency_rescue %}{{ a.emergency_rescue.name|escapejs }}{% endif %}"
+                    data-rescue-phone="{% if a.emergency_rescue %}{{ a.emergency_rescue.phone|escapejs }}{% endif %}"
+                    data-alert="{{ a.alert|escapejs }}"
+                    data-status="{{ a.status|default:'' }}"
+                    data-lat="{{ a.latitude|default:'' }}"
+                    data-lon="{{ a.longitude|default:'' }}"
+                    data-date="{{ a.date|default:'' }}"
+                    data-auto-open="true"
+                    >
+                    View
+                  </button>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="8" class="px-4 py-8 text-center text-slate-500">No alerts available.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- VIEW MODAL (unchanged, uses data-rescue-phone now) -->
+  <div id="viewModal" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop px-4">
+    <div class="w-full max-w-2xl bg-white rounded-2xl p-6 shadow-lg">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h3 id="modalTitle" class="text-lg font-semibold">Alert Details</h3>
+          <div id="modalMeta" class="text-sm text-slate-400 mt-1">ID: <span id="modalUserId">—</span> · Status: <span id="modalStatus">—</span></div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="closeModal" class="text-slate-500 hover:text-slate-800">✕</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
+        <div>
+          <div class="text-xs text-slate-500">Rescue Team</div>
+          <div id="modalRescue" class="font-medium text-slate-800">—</div>
+
+          <div class="mt-3 text-xs text-slate-500">Rescue Phone</div>
+          <div id="modalRescuePhone" class="font-medium text-slate-800">—</div>
+
+          <div class="mt-3 text-xs text-slate-500">Coordinates</div>
+          <div id="modalCoords" class="font-medium text-slate-800">—</div>
+
+          <div class="mt-3 text-xs text-slate-500">Quick copy</div>
+          <div class="mt-2">
+            <button id="copyBtn" class="px-3 py-2 rounded-2xl border text-sm">Copy details</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="text-xs text-slate-500">Alert text</div>
+          <pre id="modalAlertText" class="mt-1 text-sm text-slate-700 whitespace-pre-wrap bg-slate-50 p-3 rounded-md max-h-48 overflow-auto"></pre>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 mt-6">
+        <button id="openMapBtn" class="px-3 py-2 rounded-2xl border hover:bg-slate-50 text-sm">Open in Maps</button>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+{% block scripts %}
+  <script>
+    // Client-side filter + sort + modal wiring
+    document.addEventListener('DOMContentLoaded', () => {
+      const table = document.getElementById('alertsTable');
+      const tbody = document.getElementById('alertsBody');
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      const searchInput = document.getElementById('globalSearch');
+      const rescueFilter = document.getElementById('rescueFilter');
+      const sortOrder = document.getElementById('sortOrder');
+      const resetBtn = document.getElementById('resetFilters');
+      const shownCountEl = document.getElementById('shownCount');
+      const totalCountEl = document.getElementById('totalCount');
+
+      // populate rescueFilter from table data (unique names)
+      const rescueSet = new Set();
+      rows.forEach(r => {
+        const name = (r.dataset.rescueName || '').trim();
+        if (name) rescueSet.add(name);
+      });
+      Array.from(rescueSet).sort().forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        rescueFilter.appendChild(opt);
+      });
+
+      function normalize(s){ return String(s||'').toLowerCase(); }
+
+      function rowMatches(row, q, rescueName) {
+        if (rescueName && rescueName !== 'all' && normalize(row.dataset.rescueName) !== normalize(rescueName)) return false;
+        if (!q) return true;
+        // check user, rescue, rescue-phone, alert, status, coords
+        const hay = [
+          row.dataset.user,
+          row.dataset.rescueName,
+          row.dataset.rescuePhone,
+          row.dataset.alert,
+          row.dataset.status,
+          row.dataset.lat,
+          row.dataset.lon
+        ].join(' ').toLowerCase();
+        return hay.indexOf(q) !== -1;
+      }
+
+      function parseDateOrId(row){
+        const d = row.dataset.date && row.dataset.date.trim();
+        if (d){
+          const parsed = Date.parse(d);
+          if (!isNaN(parsed)) return parsed;
+        }
+        // fallback to numeric id if available
+        const id = parseInt(row.dataset.id, 10);
+        return isNaN(id) ? 0 : id;
+      }
+
+      function renderFiltered() {
+        const q = normalize(searchInput.value.trim());
+        const rescueName = rescueFilter.value;
+        const order = sortOrder.value;
+
+        // filter rows
+        let visible = rows.filter(r => rowMatches(r, q, rescueName));
+
+        // sort
+        if (order === 'newest') {
+          visible.sort((a,b) => parseDateOrId(b) - parseDateOrId(a));
+        } else if (order === 'oldest') {
+          visible.sort((a,b) => parseDateOrId(a) - parseDateOrId(b));
+        } // default: keep current DOM order
+
+        // clear and re-append
+        tbody.innerHTML = '';
+        visible.forEach(r => tbody.appendChild(r));
+
+        // update counters
+        shownCountEl.textContent = visible.length;
+        totalCountEl.textContent = rows.length;
+      }
+
+      // wire controls
+      searchInput.addEventListener('input', () => renderFiltered());
+      rescueFilter.addEventListener('change', () => renderFiltered());
+      sortOrder.addEventListener('change', () => renderFiltered());
+      resetBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        rescueFilter.value = 'all';
+        sortOrder.value = 'default';
+        renderFiltered();
+      });
+
+      // initial render
+      renderFiltered();
+
+      // --- modal wiring (same pattern as before) ---
+      const viewBtns = document.querySelectorAll('.view-btn');
+      const modal = document.getElementById('viewModal');
+      const closeModal = document.getElementById('closeModal');
+      const modalUserId = document.getElementById('modalUserId');
+      const modalStatus = document.getElementById('modalStatus');
+      const modalRescue = document.getElementById('modalRescue');
+      const modalRescuePhone = document.getElementById('modalRescuePhone');
+      const modalCoords = document.getElementById('modalCoords');
+      const modalAlertText = document.getElementById('modalAlertText');
+      const openMapBtn = document.getElementById('openMapBtn');
+      const copyBtn = document.getElementById('copyBtn');
+      const markResolvedBtn = document.getElementById('markResolvedBtn');
+      const deleteBtn = document.getElementById('deleteBtn');
+
+      let activeData = null;
+
+      function showModal(){ modal.classList.remove('hidden'); modal.classList.add('flex'); }
+      function hideModal(){ modal.classList.add('hidden'); modal.classList.remove('flex'); activeData = null; }
+
+      viewBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const el = e.currentTarget;
+          activeData = {
+            id: el.dataset.id || '',
+            userId: el.dataset.userId || '',
+            rescue: el.dataset.rescueName || el.dataset.rescue || '',
+            rescuePhone: el.dataset.rescuePhone || '',
+            alert: (el.dataset.alert || '').replace(/\\n/g, "\n"),
+            status: el.dataset.status || '',
+            lat: el.dataset.lat || '',
+            lon: el.dataset.lon || '',
+            date: el.dataset.date || '',
+            autoOpen: el.dataset.autoOpen === 'true'
+          };
+
+          modalUserId.textContent = activeData.userId || activeData.id || '—';
+          modalStatus.textContent = activeData.status || '—';
+          modalRescue.textContent = activeData.rescue || '—';
+          modalRescuePhone.textContent = activeData.rescuePhone || '—';
+          modalAlertText.textContent = activeData.alert || '—';
+          if (activeData.lat && activeData.lon) {
+            modalCoords.textContent = `${activeData.lat} , ${activeData.lon}`;
+          } else {
+            modalCoords.textContent = 'Not available';
+          }
+
+          openMapBtn.onclick = () => openMapFor(activeData);
+         // if (activeData.autoOpen && activeData.lat && activeData.lon) openMapFor(activeData);
+
+          showModal();
+        });
+      });
+
+      copyBtn.addEventListener('click', async () => {
+        if (!activeData) return;
+        const text = [
+          `User ID: ${activeData.userId || activeData.id}`,
+          `Rescue Team: ${activeData.rescue || '—'}`,
+          `Rescue Phone: ${activeData.rescuePhone || '—'}`,
+          `Status: ${activeData.status || '—'}`,
+          `Coordinates: ${activeData.lat && activeData.lon ? activeData.lat + ', ' + activeData.lon : 'N/A'}`,
+          '',
+          `Alert:`,
+          activeData.alert || '—'
+        ].join('\\n');
+        try {
+          await navigator.clipboard.writeText(text);
+          copyBtn.textContent = 'Copied!';
+          setTimeout(()=> copyBtn.textContent = 'Copy details', 1200);
+        } catch (err) {
+          const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+          copyBtn.textContent = 'Copied!'; setTimeout(()=> copyBtn.textContent = 'Copy details', 1200);
+        }
+      });
+
+      markResolvedBtn.addEventListener('click', () => {
+        if (!activeData) return;
+        if (!confirm('Mark this alert as resolved?')) return;
+        alert('Marked resolved (client-only). Implement backend POST to persist.');
+        hideModal();
+      });
+
+      deleteBtn.addEventListener('click', () => {
+        if (!activeData) return;
+        if (!confirm('Delete this alert?')) return;
+        alert('Deleted (client-only). Implement backend POST/DELETE to persist.');
+        hideModal();
+      });
+
+      closeModal.addEventListener('click', hideModal);
+      modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
+
+      function openMapFor(data){
+        if (data.lat && data.lon){
+          const q = encodeURIComponent(`${data.lat},${data.lon}`);
+          window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, '_blank');
+        } else if (data.alert){
+          const q = encodeURIComponent(data.alert);
+          window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, '_blank');
+        } else {
+          alert('No location data available for this alert.');
+        }
+      }
+    });
+  </script>
+{% endblock %}

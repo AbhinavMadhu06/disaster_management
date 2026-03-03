@@ -1,0 +1,180 @@
+{% extends "camp_cordinator/base.html" %}
+{% load static %}
+
+{% block title %}My Guidelines — Camp Coordinator{% endblock %}
+
+{% block head_extra %}
+<style>
+  /* Match the simple, modern style used in your Add Stock page */
+  body { font-family: 'Public Sans', sans-serif; background: #f9fafb; color: #0f172a; }
+  .page-wrap { max-width: 980px; margin: 2.5rem auto; padding: 1.25rem; }
+  .card { background: #ffffff; border-radius: 12px; padding: 1rem; box-shadow: 0 8px 24px rgba(15,23,42,0.04); }
+  .panel { background: linear-gradient(180deg,#ffffff,#fbfdff); border-radius: 12px; padding: 1rem; box-shadow: 0 10px 30px rgba(2,6,23,0.03); }
+  header.h { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
+  header.h h1 { font-size:1.35rem; font-weight:800; }
+  .sub { color:#6b7280; font-size:.95rem; }
+  .controls { display:flex; gap:.5rem; align-items:center; }
+  input.search {
+    padding:.6rem .9rem; border-radius:8px; border:1px solid #e5e7eb; width:340px;
+  }
+  select, button { padding:.6rem .9rem; border-radius:8px; border:1px solid #e5e7eb; background:white; cursor:pointer; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; margin-top:1rem; }
+  .guideline-card { padding:1rem; border-radius:12px; background:linear-gradient(180deg,#ffffff,#fbfbff); border:1px solid #eef2ff; }
+  .meta { color:#6b7280; font-size:.85rem; }
+  .priority { font-weight:700; padding:.25rem .5rem; border-radius:999px; color:white; font-size:.78rem; }
+  .pri-normal{background:#10b981;} .pri-high{background:#f59e0b;} .pri-critical{background:#ef4444;}
+  .btn-primary { background: linear-gradient(90deg,#147efb,#6c5ce7); color:white; border:none; padding:.6rem .9rem; border-radius:8px; }
+  .muted { color:#9aa3b2; font-size:.9rem; }
+  .empty { text-align:center; padding:2rem; color:#6b7280; }
+  /* modal */
+  .modal-back { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(3,7,18,0.5); z-index:60; padding:1rem; }
+  .modal { width:100%; max-width:760px; background:white; border-radius:12px; padding:1.25rem; box-shadow:0 20px 50px rgba(2,6,23,0.2); }
+  .close-btn { background:transparent; border:none; font-size:1.25rem; cursor:pointer; }
+  @media (max-width:520px){ input.search { width: 100% } .controls{ flex-direction:column; align-items:stretch } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrap">
+  <div class="panel">
+    <header class="h">
+      <div>
+        <h1>My Guidelines</h1>
+        <div class="sub">These are the guidelines provided by admin</div>
+      </div>
+      <div class="controls">
+        <input id="q" class="search" placeholder="Search title, text or date..." />
+        <select id="priority">
+          <option value="">All priorities</option>
+          <option value="Normal">Normal</option>
+          <option value="High">High</option>
+          <option value="Critical">Critical</option>
+        </select>
+        <button id="print" class="btn-primary" onclick="window.print()">Print</button>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="grid" id="cards">
+        {# View already filters guidelines to the current coordinator, so show them directly #}
+        {% for g in guidelines %}
+          <article class="guideline-card"
+                   data-title="{{ g.title|escapejs }}"
+                   data-guideline="{{ g.guideline|striptags|escapejs }}"
+                   data-priority="{{ g.priority }}"
+                   data-date="{{ g.date|date:'Y-m-d' }}">
+            <div style="display:flex;justify-content:space-between;align-items:start;gap:.5rem;">
+              <div>
+                <h3 style="margin:0;font-size:1.05rem;font-weight:700;">{{ g.title }}</h3>
+                <div class="meta">To <strong>{{ g.coordinator.name }}</strong> • <time>{{ g.date|date:"M d, Y" }}</time></div>
+              </div>
+              <div style="text-align:right;">
+                <div class="priority {% if g.priority == 'Normal' %}pri-normal{% elif g.priority == 'High' %}pri-high{% else %}pri-critical{% endif %}">{{ g.priority }}</div>
+              </div>
+            </div>
+
+            <p class="muted" style="margin-top:.6rem;line-height:1.45;">{{ g.guideline|linebreaksbr|truncatechars:220 }}</p>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.8rem;">
+              <div class="meta">ID: {{ g.id }}</div>
+
+            </div>
+          </article>
+        {% empty %}
+          <div id="noResults" class="empty card" style="margin-top:1rem;">You don't have any guidelines yet. Use the admin to add new guidelines or click "Add" from the dashboard.</div>
+        {% endfor %}
+      </div>
+
+      {# Keep a fallback empty element in case client-side filters hide everything later #}
+      <div id="noResultsFallback" class="empty card" style="display:none; margin-top:1rem;">No guidelines match your search.</div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="modalWrap" class="modal-back" role="dialog" aria-hidden="true">
+  <div class="modal" role="document">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <h2 id="mTitle" style="margin:0;font-weight:800;font-size:1.2rem;"></h2>
+        <div id="mMeta" class="meta" style="margin-top:.35rem;"></div>
+      </div>
+      <button class="close-btn" id="closeModal">✕</button>
+    </div>
+    <hr style="margin: .75rem 0; border-color:#eef2ff">
+    <div id="mBody" style="white-space:pre-wrap; line-height:1.6; color:#123; max-height:55vh; overflow:auto;"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
+      <button id="closeModal2" class="btn-primary">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // client-side search + priority filter
+    const q = document.getElementById('q');
+    const priority = document.getElementById('priority');
+    const cardsContainer = document.getElementById('cards');
+    const noResultsFallback = document.getElementById('noResultsFallback');
+
+    function getAllCards(){ return Array.from(cardsContainer.querySelectorAll('article')); }
+
+    function applyFilters(){
+      const s = q.value.trim().toLowerCase();
+      const p = priority.value;
+      const all = getAllCards();
+      all.forEach(card => {
+        const title = (card.dataset.title||'').toLowerCase();
+        const guideline = (card.dataset.guideline||'').toLowerCase();
+        const pr = card.dataset.priority || '';
+        const matchesSearch = !s || title.includes(s) || guideline.includes(s) || (card.dataset.date||'').includes(s);
+        const matchesPriority = !p || pr === p;
+        card.style.display = (matchesSearch && matchesPriority) ? '' : 'none';
+      });
+      updateEmptyState();
+    }
+
+    function updateEmptyState(){
+      const visible = getAllCards().filter(c => c.style.display !== 'none');
+      noResultsFallback.style.display = visible.length ? 'none' : 'block';
+    }
+
+    q.addEventListener('input', applyFilters);
+    priority.addEventListener('change', applyFilters);
+
+    // modal handling
+    const modalWrap = document.getElementById('modalWrap');
+    const mTitle = document.getElementById('mTitle');
+    const mMeta = document.getElementById('mMeta');
+    const mBody = document.getElementById('mBody');
+    const closeModal = document.getElementById('closeModal');
+    const closeModal2 = document.getElementById('closeModal2');
+
+    function attachViewListeners(){
+      Array.from(document.querySelectorAll('.viewBtn')).forEach(btn => {
+        btn.addEventListener('click', e => {
+          const card = e.target.closest('article');
+          mTitle.textContent = card.dataset.title;
+          mMeta.textContent = `Priority: ${card.dataset.priority} • Date: ${card.dataset.date}`;
+          mBody.textContent = card.dataset.guideline || '';
+          modalWrap.style.display = 'flex';
+          modalWrap.setAttribute('aria-hidden','false');
+        });
+      });
+    }
+
+    function close() {
+      modalWrap.style.display = 'none';
+      modalWrap.setAttribute('aria-hidden','true');
+    }
+    closeModal.addEventListener('click', close);
+    closeModal2.addEventListener('click', close);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+    // initializations
+    attachViewListeners();
+    applyFilters(); // also sets empty state on load
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,401 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}View Camps — Disaster Management{% endblock %}
+
+{% block head_extra %}
+  <style>
+    :root { --primary: #147efb; --accent: #6c5ce7; }
+    body { font-family: 'Public Sans', system-ui, -apple-system, "Segoe UI", Roboto, Arial; background:#f8fafc; color:#0f172a; }
+    .site-logo { width:44px; height:44px; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; background:linear-gradient(180deg,var(--primary),var(--accent)); color:white; }
+
+    /* layout */
+    #map { width: 100%; height: 650px; border-radius: 12px; }
+    @media (max-width: 1024px) { #map { height: 520px; } }
+    @media (max-width: 640px) { #map { height: 360px; } }
+
+    .card-hover { transition: transform .18s ease, box-shadow .18s ease; }
+    .card-hover:hover { transform: translateY(-6px); box-shadow: 0 14px 30px rgba(2,6,23,0.08); cursor: pointer; }
+    .focus-ring { outline: 3px solid rgba(20,126,251,0.10); outline-offset: 2px; }
+
+    /* scrollable list */
+    .list-scroll { max-height: 64vh; overflow:auto; padding-right: 6px; }
+
+    /* marker highlight */
+    .card-selected { box-shadow: 0 8px 26px rgba(20,126,251,0.12); border-color: rgba(20,126,251,0.12); }
+
+    /* accessible focus */
+    :focus { outline: 3px solid rgba(20,126,251,0.10); outline-offset: 2px; }
+
+  </style>
+{% endblock %}
+{% block content %}
+
+
+  <!-- Page header -->
+  <main>
+    <section class="container mx-auto px-6 py-8">
+      <div class="flex items-start justify-between gap-6">
+        <div>
+          <h1 class="text-2xl font-extrabold text-slate-900">Disaster Map</h1>
+          <p class="text-sm text-slate-500 mt-1">Filter incidents by State/Region and Disaster Type. Hover a result to focus the map.</p>
+        </div>
+
+        <div class="hidden sm:flex items-center gap-3">
+          <button id="exportVisible" class="py-2 px-3 rounded-md bg-[var(--primary)] text-white text-sm hover:bg-blue-600">Export Visible</button>
+          <button id="resetFilters" class="py-2 px-3 rounded-md border border-slate-200 text-sm hover:bg-slate-50">Reset</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Responsive layout: left filters+list, right map -->
+    <section class="container mx-auto px-6 pb-12">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- LEFT column: filters + list (span 1 of 3) -->
+        <div class="lg:col-span-1 bg-white rounded-2xl p-4 md:p-6 shadow-lg">
+          <!-- responsive collapse for mobile -->
+          <details class="md:block" open>
+            <summary class="md:hidden cursor-pointer font-semibold text-slate-800 mb-3">Filters ▾</summary>
+
+            <form id="filterForm" class="space-y-4" onsubmit="return false;" aria-label="Filter disasters">
+              <div>
+                <label for="stateSelect" class="block text-sm font-medium text-slate-700">District</label>
+                <select name="district" id="stateSelect" class="mt-1 block w-full rounded-xl border border-slate-200 px-3 py-2" aria-label="Filter by state">
+                  <option value="all">All states</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="typeSelect" class="block text-sm font-medium text-slate-700">Disaster Type</label>
+                <select name="distype" id="typeSelect" class="mt-1 block w-full rounded-xl border border-slate-200 px-3 py-2" aria-label="Filter by disaster type">
+                  <option value="all">All types</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="severitySelect" class="block text-sm font-medium text-slate-700">Severity</label>
+                <select name="severity" id="severitySelect" class="mt-1 block w-full rounded-xl border border-slate-200 px-3 py-2" aria-label="Filter by severity">
+                  <option value="all">All severities</option>
+                  <option value="critical">Critical</option>
+                  <option value="high">High</option>
+                  <option value="moderate">Moderate</option>
+                </select>
+              </div>
+
+              <div class="flex gap-2">
+                <button id="applyBtn" type="button" class="flex-1 py-2 px-3 rounded-xl bg-[var(--primary)] text-white font-semibold hover:bg-blue-600">Apply</button>
+                <button id="clearBtn" type="button" class="py-2 px-3 rounded-xl border border-slate-200 hover:bg-slate-50">Clear</button>
+              </div>
+            </form>
+          </details>
+
+          <!-- results header -->
+          <div class="mt-4 mb-3 flex items-center justify-between">
+            <div class="text-sm text-slate-500">Showing <span id="visibleCount">0</span> results</div>
+            <div class="text-xs text-slate-400">Auto-updates</div>
+          </div>
+
+          <!-- scrollable list -->
+          <div id="list" class="space-y-3 list-scroll">
+            <!-- JS fills cards here -->
+          </div>
+
+          <!-- mobile action buttons -->
+          <div class="mt-4 md:hidden flex gap-2">
+            <button id="mExport" class="flex-1 py-2 px-3 rounded-md bg-[var(--primary)] text-white text-sm">Export</button>
+            <button id="mReset" class="py-2 px-3 rounded-md border border-slate-200 text-sm">Reset</button>
+          </div>
+        </div>
+
+        <!-- RIGHT column: map (span 2 of 3) -->
+        <div class="lg:col-span-2 bg-white rounded-2xl p-4 md:p-6 shadow-lg">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-lg font-semibold text-slate-800">Interactive Map</h3>
+            <div class="text-sm text-slate-500">Hover list → focus marker</div>
+          </div>
+          <div id="map" class="rounded-md border border-gray-100" role="application" aria-label="Disaster map"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer (exact style) -->
+   
+  </main>
+  {% endblock %}
+  {% block scripts %}
+
+  <!-- JS: map + filtering logic (search removed) -->
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Demo alerts behavior
+    const alerts = [
+      { id: 1, level: 'critical', text: 'Flooding reported near Riverfront Camp — immediate evacuation advised.' },
+      { id: 2, level: 'high', text: 'Road washed out on Route 12 — supply delivery delayed.' }
+    ];
+    document.getElementById('openAlertsBtn')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const content = alerts.map(a => `• ${a.text}`).join('\\n\\n');
+      alert('Active critical alerts:\\n\\n' + content);
+    });
+
+    // Sample dataset (simulate API)
+    const disasters = [
+      { id: 1, title: 'Colombo Floods', state: 'Western', type:'Flood', severity:'critical', lat:6.9271, lng:79.8612, date:'2025-09-15', summary:'Severe floods due to heavy rainfall affecting low-lying areas.' },
+      { id: 2, title: 'Kandy Landslide', state: 'Central', type:'Landslide', severity:'high', lat:7.2906, lng:80.6337, date:'2025-09-10', summary:'Landslide triggered by prolonged rain. Rescue teams deployed.' },
+      { id: 3, title: 'Galle Coastal Storm', state: 'Southern', type:'Storm', severity:'high', lat:6.0535, lng:80.2210, date:'2025-09-12', summary:'Strong coastal winds and storm surge reported.' },
+      { id: 4, title: 'Jaffna Small Fire', state: 'Northern', type:'Fire', severity:'moderate', lat:9.6615, lng:80.0255, date:'2025-09-05', summary:'Local market fire contained by volunteers.' },
+      { id: 5, title: 'Polonnaruwa Earthquake', state: 'North Central', type:'Earthquake', severity:'moderate', lat:7.9400, lng:81.0000, date:'2025-08-22', summary:'Minor tremors felt, no major damage reported.' },
+      { id: 6, title: 'Matara Flooding', state: 'Southern', type:'Flood', severity:'high', lat:5.9487, lng:80.5355, date:'2025-09-14', summary:'River overflow in Matara district.' },
+      { id: 7, title: 'Badulla Landslide', state: 'Uva', type:'Landslide', severity:'critical', lat:6.9935, lng:81.0550, date:'2025-09-11', summary:'Multiple houses affected on steep slopes.' },
+      { id: 8, title: 'Batticaloa Storm', state: 'Eastern', type:'Storm', severity:'high', lat:7.7110, lng:81.6784, date:'2025-09-13', summary:'Heavy rains and localized flooding.' }
+    ];
+
+    // DOM refs
+    const stateSelect = document.getElementById('stateSelect');
+    const typeSelect  = document.getElementById('typeSelect');
+    const severitySelect = document.getElementById('severitySelect');
+    const listEl = document.getElementById('list');
+    const visibleCount = document.getElementById('visibleCount');
+    const applyBtn = document.getElementById('applyBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const exportVisible = document.getElementById('exportVisible');
+    const resetFilters = document.getElementById('resetFilters');
+    const mExport = document.getElementById('mExport');
+    const mReset = document.getElementById('mReset');
+
+    // localStorage key for remembering filters
+    const FILTER_KEY = 'disaster_map_filters_v1';
+
+    // populate selects with unique values (derived from dataset)
+    function populateFilters() {
+      const states = Array.from(new Set(disasters.map(d => d.state))).sort();
+      const types  = Array.from(new Set(disasters.map(d => d.type))).sort();
+
+      states.forEach(s => {
+        const opt = document.createElement('option'); opt.value = s; opt.textContent = s; stateSelect.appendChild(opt);
+      });
+      types.forEach(t => {
+        const opt = document.createElement('option'); opt.value = t; opt.textContent = t; typeSelect.appendChild(opt);
+      });
+    }
+
+    populateFilters();
+
+    // Map setup
+    let map, markerLayer, markersMap = {};
+    function initMap() {
+      map = L.map('map', { preferCanvas: true }).setView([7.5, 80.5], 7);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+      markerLayer = L.layerGroup().addTo(map);
+    }
+
+    // mapping severity -> color
+    const sevColor = { critical:'#dc2626', high:'#f59e0b', moderate:'#10b981' };
+
+    // render markers for given items
+    function renderMarkers(items) {
+      markerLayer.clearLayers();
+      markersMap = {};
+      const group = [];
+      items.forEach(d => {
+        // use a circle marker styled by severity
+        const circle = L.circleMarker([d.lat, d.lng], {
+          radius: 8,
+          fillColor: sevColor[d.severity]||'#3b82f6',
+          color: '#fff',
+          weight: 1,
+          fillOpacity: 0.95
+        }).addTo(markerLayer);
+
+        const popup = `<strong>${escapeHtml(d.title)}</strong><br/><small class="text-muted">${escapeHtml(d.type)} · ${escapeHtml(d.state)} · ${escapeHtml(d.date)}</small><div style="margin-top:6px">${escapeHtml(d.summary)}</div>`;
+        circle.bindPopup(popup, { minWidth: 200 });
+        circle.on('click', () => {
+          circle.openPopup();
+          // highlight corresponding card
+          highlightCard(d.id);
+        });
+        circle.on('mouseover', () => circle.openPopup());
+        circle.on('mouseout', () => circle.closePopup());
+
+        markersMap[d.id] = circle;
+        group.push(circle.getLatLng());
+      });
+
+      // fit to markers or reset view
+      if (group.length) {
+        const bounds = L.latLngBounds(group);
+        map.fitBounds(bounds.pad(0.2));
+      } else {
+        map.setView([7.5,80.5], 7);
+      }
+    }
+
+    // render list cards
+    function renderList(items) {
+      listEl.innerHTML = '';
+      if (!items.length) {
+        listEl.innerHTML = '<div class="text-sm text-slate-500">No incidents match your filters.</div>';
+        visibleCount.textContent = 0;
+        return;
+      }
+      visibleCount.textContent = items.length;
+
+      items.forEach(d => {
+        const card = document.createElement('article');
+        card.className = 'card-hover border border-slate-100 rounded-lg p-3 flex gap-3 items-start bg-white';
+        card.setAttribute('tabindex','0');
+        card.setAttribute('role','button');
+        card.dataset.id = d.id;
+        card.innerHTML = `
+          <div class="w-12 h-12 rounded-md flex items-center justify-center bg-slate-50 shrink-0">
+            <span class="text-sm font-semibold" style="color:${sevColor[d.severity]||'#3b82f6'}">${d.type[0]}</span>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <h4 class="text-sm font-semibold text-slate-900">${escapeHtml(d.title)}</h4>
+                <div class="text-xs text-slate-500">${escapeHtml(d.state)} · ${escapeHtml(d.date)}</div>
+              </div>
+              <div>
+                <span class="inline-flex items-center text-xs px-2 py-1 rounded-full font-semibold ${d.severity==='critical' ? 'bg-rose-100 text-rose-700' : (d.severity==='high' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700')}">${d.severity}</span>
+              </div>
+            </div>
+            <p class="mt-2 text-sm text-slate-600">${escapeHtml(d.summary).slice(0,120)}${d.summary.length>120?'...':''}</p>
+          </div>
+        `;
+        // hover -> highlight marker
+        card.addEventListener('mouseenter', () => {
+          const m = markersMap[d.id];
+          if (m) {
+            m.openPopup();
+            map.flyTo([d.lat, d.lng], 11, { animate:true, duration:0.7 });
+          }
+          card.classList.add('card-selected');
+        });
+        card.addEventListener('mouseleave', () => {
+          const m = markersMap[d.id];
+          if (m) { m.closePopup(); }
+          card.classList.remove('card-selected');
+        });
+        // click -> zoom to marker
+        card.addEventListener('click', () => {
+          const m = markersMap[d.id];
+          if (m) {
+            map.flyTo([d.lat, d.lng], 13, { animate:true, duration:0.8 });
+            m.openPopup();
+          }
+        });
+        // keyboard support
+        card.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault(); card.click();
+          }
+        });
+
+        listEl.appendChild(card);
+      });
+    }
+
+    // highlight card by id (used by marker click)
+    function highlightCard(id) {
+      const prev = listEl.querySelector('.card-selected');
+      if (prev) prev.classList.remove('card-selected');
+      const card = listEl.querySelector(`[data-id="${id}"]`);
+      if (card) {
+        card.classList.add('card-selected');
+        // scroll into view in list
+        card.scrollIntoView({ behavior:'smooth', block:'center' });
+      }
+    }
+
+    // Filter logic (search removed)
+    function getFilters() {
+      return {
+        state: stateSelect.value || 'all',
+        type: typeSelect.value || 'all',
+        severity: severitySelect.value || 'all'
+      };
+    }
+
+    function filterData() {
+      const f = getFilters();
+      // save filters
+      try { localStorage.setItem(FILTER_KEY, JSON.stringify(f)); } catch(e){}
+      const out = disasters.filter(d => {
+        if (f.state !== 'all' && d.state !== f.state) return false;
+        if (f.type !== 'all' && d.type !== f.type) return false;
+        if (f.severity !== 'all' && d.severity !== f.severity) return false;
+        return true;
+      });
+      renderMarkers(out);
+      renderList(out);
+    }
+
+    // helpers
+    function escapeHtml(s='') {
+      return String(s).replace(/[&<>"']/g, function(m){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);});
+    }
+
+    // Export visible items to CSV
+    function exportVisibleResults() {
+      const f = getFilters();
+      const filtered = disasters.filter(d => {
+        if (f.state !== 'all' && d.state !== f.state) return false;
+        if (f.type !== 'all' && d.type !== f.type) return false;
+        if (f.severity !== 'all' && d.severity !== f.severity) return false;
+        return true;
+      });
+      if (!filtered.length) { alert('No visible results to export.'); return; }
+      const rows = [['ID','Title','Type','State','Severity','Date','Lat','Lng','Summary']];
+      filtered.forEach(r => rows.push([r.id, r.title, r.type, r.state, r.severity, r.date, r.lat, r.lng, r.summary.replace(/\n/g,' ')]));
+      const csv = rows.map(r => r.map(cell => `"${String(cell||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `disasters_visible_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // apply / clear handlers
+    applyBtn.addEventListener('click', filterData);
+    clearBtn.addEventListener('click', () => {
+      stateSelect.value = 'all'; typeSelect.value = 'all'; severitySelect.value = 'all';
+      filterData();
+    });
+    resetFilters.addEventListener('click', () => {
+      stateSelect.value = 'all'; typeSelect.value = 'all'; severitySelect.value = 'all';
+      filterData();
+    });
+    mReset?.addEventListener('click', () => { stateSelect.value='all'; typeSelect.value='all'; severitySelect.value='all'; filterData(); });
+    exportVisible.addEventListener('click', exportVisibleResults);
+    mExport?.addEventListener('click', exportVisibleResults);
+
+    // quick apply on type/state change
+    [stateSelect, typeSelect, severitySelect].forEach(el => el.addEventListener('change', filterData));
+
+    // restore filters if saved (search removed)
+    (function restoreFilters(){
+      try {
+        const saved = JSON.parse(localStorage.getItem(FILTER_KEY) || '{}');
+        if (saved && Object.keys(saved).length) {
+          if (saved.state) stateSelect.value = saved.state;
+          if (saved.type)  typeSelect.value = saved.type;
+          if (saved.severity) severitySelect.value = saved.severity;
+        }
+      } catch(e){}
+    })();
+
+    // bootstrap map + UI
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      filterData();
+    });
+
+    // small utility handlers
+    function demo(msg){ alert(msg + ' (demo)'); }
+    function searchLogs(){ const q = document.getElementById('logQuery').value || '(empty)'; alert('Searching logs for: ' + q + ' (demo)'); }
+  </script>
+{% endblock %}

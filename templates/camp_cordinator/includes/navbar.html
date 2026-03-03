@@ -1,0 +1,68 @@
+{% load static %}
+<header class="sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-slate-200 shadow-sm">
+  <div class="container mx-auto px-6 py-3 flex items-center justify-between gap-6">
+
+    <!-- LEFT: Logo + Title -->
+    <div class="flex items-center gap-3">
+      <div class="site-logo flex items-center justify-center border border-slate-200 rounded-xl h-12 w-12 overflow-hidden shadow-sm bg-gradient-to-br from-sky-100 to-blue-200">
+        <!-- simple shield icon -->
+                <img src="{% static 'images/logo.png' %}" class="h-full w-full object-cover" alt="Logo">
+
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-wide text-slate-500">Camp Coordinator Portal</div>
+        <div class="text-lg md:text-xl font-extrabold bg-gradient-to-r from-sky-600 via-blue-500 to-cyan-400 text-transparent bg-clip-text">
+          Disaster Management
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: Navigation Links -->
+    <nav class="hidden md:flex justify-center gap-6 text-sm font-medium text-slate-700">
+      <a href="/myapp/cordinator_home/" class="relative group transition">
+        Home
+        <span class="absolute left-0 bottom-0 w-0 h-[2px] bg-sky-500 transition-all duration-300 group-hover:w-full"></span>
+      </a>
+      <a href="/myapp/medical_support/" class="relative group transition">
+        Medical Support
+        <span class="absolute left-0 bottom-0 w-0 h-[2px] bg-sky-500 transition-all duration-300 group-hover:w-full"></span>
+      </a>
+      <a href="/myapp/member_register/" class="relative group transition">
+        Members
+        <span class="absolute left-0 bottom-0 w-0 h-[2px] bg-sky-500 transition-all duration-300 group-hover:w-full"></span>
+      </a>
+      <a href="/myapp/stock_management/" class="relative group transition">
+        Stock
+        <span class="absolute left-0 bottom-0 w-0 h-[2px] bg-sky-500 transition-all duration-300 group-hover:w-full"></span>
+      </a>
+    </nav>
+
+    <!-- RIGHT: Profile + Logout -->
+    <div class="flex items-center justify-end gap-3">
+      <!-- Profile Button -->
+      <a href="/myapp/cordinator_profile/"
+         class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm hover:bg-sky-50 hover:border-sky-200 transition">
+        <span class="material-icons text-sky-600">person</span>
+        <span class="hidden sm:inline font-medium text-slate-700">Profile</span>
+      </a>
+
+      <!-- Logout Button (POST Form) -->
+      <form id="logout-form" action="{% url 'logout' %}" method="post" class="m-0 p-0">
+        {% csrf_token %}
+        <button type="submit"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-xl border border-slate-200 bg-white shadow-sm hover:bg-slate-100 hover:border-sky-300 transition">
+          <span class="material-icons text-slate-600">logout</span>
+          <span class="hidden sm:inline font-medium text-slate-700">Logout</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MOBILE NAV -->
+  <div class="md:hidden border-t border-slate-200 bg-white/70 backdrop-blur p-3 flex justify-around text-sm font-medium text-slate-700">
+    <a href="/myapp/cordinator_home/" class="hover:text-sky-600">Home</a>
+    <a href="/myapp/medical_support/" class="hover:text-sky-600">Medical</a>
+    <a href="/myapp/member_register/" class="hover:text-sky-600">Members</a>
+    <a href="/myapp/stock_management/" class="hover:text-sky-600">Stock</a>
+  </div>
+</header>

@@ -1,0 +1,429 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}View Rescue Teams — Disaster Management{% endblock %}
+
+{% block head_extra %}
+<style>
+  :root { --primary: #147efb; --accent: #6c5ce7; --glass: rgba(255,255,255,0.06); --glass-border: rgba(255,255,255,0.10); }
+  body { font-family: 'Public Sans', 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, Arial; background: #f8fafc; color: #0f172a; }
+
+  .card-round { border-radius: 14px; }
+  .table-avatar { min-width: 200px; }
+  .lift { transition: transform .22s cubic-bezier(.2,.9,.32,1), box-shadow .22s; }
+  .lift:hover { transform: translateY(-6px); box-shadow: 0 18px 40px rgba(2,6,23,0.20); }
+  .verified { background-color: #dcfce7; color: #15803d; }
+  .unverified { background-color: #fee2e2; color: #b91c1c; }
+
+  /* Modal centered */
+  #viewModal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 60; padding: 20px; }
+  #viewModal.active { display: flex; }
+  #viewModal .modal-backdrop { position:absolute; inset:0; background:rgba(0,0,0,0.45); }
+  #viewModal .modal-box { position:relative; width:100%; max-width:760px; z-index:10; transform: translateY(0); transition: transform .18s ease, opacity .18s ease; }
+
+  /* Delete modal animations (tailwind utility classes used in template; we add small fallback) */
+  .modal-card { transition: transform .18s ease, opacity .18s ease; }
+  .enter { transform: scale(1); opacity: 1; }
+  .leave { transform: scale(.95); opacity: 0; }
+
+  /* Responsive table -> stacked cards on mobile */
+  .table-responsive { width: 100%; }
+  .table-responsive table { border-collapse: collapse; width: 100%; }
+
+  @media (max-width: 760px) {
+    .table-responsive thead { display: none; }
+    .table-responsive tbody tr { display: grid; grid-template-columns: 1fr 110px; gap: 8px; padding: 14px; border-radius: 12px; background: white; margin-bottom: 12px; align-items: start; }
+    .table-responsive td { display: block; padding: 0; }
+    .table-responsive td.actions { display:flex; gap:8px; justify-self: end; align-self: start; }
+    .filter-input { width: 100%; }
+    .filters-row { flex-direction: column; align-items: stretch; }
+  }
+
+  /* Desktop tweaks */
+  @media (min-width: 761px) {
+    .table-responsive tbody tr:hover { background: #fbfdff; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<main>
+<section class="container mx-auto px-6 py-10">
+  <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 card-round">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Rescue Team Management</h1>
+        <p class="text-gray-500 mt-1">View, filter, export, and manage registered rescue teams.</p>
+      </div>
+      <div class="mt-4 md:mt-0 flex items-center space-x-2">
+        <a id="addTeamLink"
+           href="{% url 'add_rescue' %}"
+           class="bg-[var(--primary)] text-white px-4 py-2 rounded-full text-sm font-semibold shadow-sm hover:bg-blue-600">
+           <span class="material-icons text-base mr-1">group_add</span> Add Rescue Team
+        </a>
+        <button id="exportBtn"
+           class="border border-[var(--primary)] text-[var(--primary)] px-4 py-2 rounded-full text-sm font-semibold hover:bg-blue-50">
+           <span class="material-icons text-base mr-1">file_download</span> Export Data
+        </button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-4 space-y-4 md:space-y-0 filters-row">
+      <div class="flex flex-wrap gap-2 w-full md:w-2/3 items-center">
+        <!-- changed: filter by role (was name) -->
+        <input id="filterRole" class="filter-input px-4 py-2 border border-gray-300 rounded-full text-sm" placeholder="Filter by role" type="text">
+        <input id="filterPhone" class="filter-input px-4 py-2 border border-gray-300 rounded-full text-sm" placeholder="Filter by phone" type="text">
+
+        <!-- Type dropdown (optional) - can be extended server-side -->
+        <select id="filterType" class="filter-input border border-gray-300 rounded-full px-4 py-2 text-sm">
+          <option value="">All Types</option>
+          {% for i in teams%}
+          <option value="{{i.role}}">{{i.role}}</option>
+          {% endfor %}
+        </select>
+        
+        <select id="filterDistrict" class="filter-input border border-gray-300 rounded-full px-4 py-2 text-sm">
+          <option value="">All Districts</option>
+          <option>Thiruvananthapuram</option><option>Kollam</option><option>Alappuzha</option>
+          <option>Pathanamthitta</option><option>Kottayam</option><option>Idukki</option>
+          <option>Ernakulam</option><option>Thrissur</option><option>Palakkad</option>
+          <option>Malappuram</option><option>Kozhikode</option><option>Wayanad</option>
+          <option>Kannur</option><option>Kasaragod</option>
+        </select>
+        <select id="filterVerify" class="filter-input border border-gray-300 rounded-full px-4 py-2 text-sm">
+          <option value="">All Status</option>
+          <option value="Verified">Varified</option>
+          <option value="Unverified">Not verified</option>
+        </select>
+      </div>
+      <button id="clearFilters" class="text-[var(--primary)] border border-[var(--primary)] px-3 py-2 rounded-full text-sm font-semibold hover:bg-blue-50">
+        Clear Filters
+      </button>
+    </div>
+
+    <!-- Table -->
+    <div class="overflow-x-auto table-responsive">
+      <table class="min-w-full bg-white">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="p-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
+            <th class="p-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
+            <th class="p-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">District</th>
+            <th class="p-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Phone</th>
+            <th class="p-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Verification</th>
+            <th class="p-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          {% for t in teams %}
+          <tr class="hover:bg-gray-50 lift"
+              data-role="{{ t.role|default:''|escapejs }}"
+              data-type="{{ t.type|default:t.role|default:''|escapejs }}"
+              data-name="{{ t.name|default:''|escapejs }}"
+              data-email="{{ t.email|default:''|escapejs }}"
+              data-phone="{{ t.phone|default:''|escapejs }}"
+              data-place="{{ t.place|default:''|escapejs }}"
+              data-district="{{ t.district|default:''|escapejs }}"
+              data-post="{{ t.post|default:''|escapejs }}"
+              data-pin="{{ t.pin|default:''|escapejs }}"
+              data-latitude="{{ t.latitude|default:''|escapejs }}"
+              data-longitude="{{ t.longitude|default:''|escapejs }}"
+              data-notes="{{ t.notes|default:''|escapejs }}"
+              data-status="{{ t.status|default:''|escapejs }}"
+              data-verify="{{ t.verification|default:''|escapejs }}">
+            <td class="p-4 text-sm text-gray-700">{{ t.role }}</td>
+            <td class="p-4 text-sm font-medium text-gray-900">{{ t.name }}</td>
+            <td class="p-4 text-sm text-gray-700">{{ t.district }}</td>
+            <td class="p-4 text-sm text-gray-700">{{ t.phone }}</td>
+            <td class="p-4">
+              {% if t.status == "Varified" %}
+                <span class="px-3 py-1 text-xs font-semibold rounded-full verified">Verified</span>
+              {% else %}
+                <span class="px-3 py-1 text-xs font-semibold rounded-full unverified">Not verified</span>
+              {% endif %}
+            </td>
+            <td class="p-4 text-sm font-medium space-x-2 actions">
+              <button type="button"
+                      class="viewBtn text-white bg-[var(--primary)] px-3 py-1.5 rounded-md text-sm hover:bg-blue-600"
+                      data-role="{{ t.role|default:''|escapejs }}"
+                      data-type="{{ t.type|default:t.role|default:''|escapejs }}"
+                      data-name="{{ t.name|default:''|escapejs }}"
+                      data-email="{{ t.email|default:''|escapejs }}"
+                      data-phone="{{ t.phone|default:''|escapejs }}"
+                      data-place="{{ t.place|default:''|escapejs }}"
+                      data-district="{{ t.district|default:''|escapejs }}"
+                      data-post="{{ t.post|default:''|escapejs }}"
+                      data-pin="{{ t.pin|default:''|escapejs }}"
+                      data-latitude="{{ t.latitude|default:''|escapejs }}"
+                      data-longitude="{{ t.longitude|default:''|escapejs }}"
+                      data-notes="{{ t.notes|default:''|escapejs }}"
+                      data-status="{{ t.status|default:''|escapejs }}"
+                      data-verify="{{ t.verification|default:''|escapejs }}">
+                View
+              </button>
+              <a href="{% url 'edit_rescue' t.id %}" class="text-sm px-3 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50">Edit</a>
+              <button type="button" class="deleteBtn bg-red-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-red-700" data-id="{{ t.id }}" data-name="{{ t.name|escapejs }}" data-action="{% url 'delete_rescue' t.id%}">Delete</button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr class="no-data"><td colspan="6" class="p-6 text-center text-sm text-gray-500">No rescue teams found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- View Modal -->
+<div id="viewModal" aria-hidden="true">
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-box bg-white rounded-xl p-6 shadow-lg w-full" role="dialog" aria-modal="true" aria-labelledby="viewModalTitle">
+    <div class="flex justify-between items-center">
+      <h3 id="viewModalTitle" class="text-lg font-semibold">Rescue Team Details</h3>
+      <button id="closeViewBtn" class="text-gray-500 hover:text-gray-700" aria-label="Close">✕</button>
+    </div>
+
+    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
+      <div><strong>Name:</strong><div id="viewName" class="mt-1"></div></div>
+      <div><strong>Email:</strong><div id="viewEmail" class="mt-1"></div></div>
+      <div><strong>Phone:</strong><div id="viewPhone" class="mt-1"></div></div>
+      <div><strong>Place:</strong><div id="viewPlace" class="mt-1"></div></div>
+      <div><strong>District:</strong><div id="viewDistrict" class="mt-1"></div></div>
+      <div><strong>Post:</strong><div id="viewPost" class="mt-1"></div></div>
+      <div><strong>Pin:</strong><div id="viewPin" class="mt-1"></div></div>
+      <div><strong>Role / Type:</strong><div id="viewRole" class="mt-1"></div></div>
+      <div><strong>Latitude:</strong><div id="viewLatitude" class="mt-1"></div></div>
+      <div><strong>Longitude:</strong><div id="viewLongitude" class="mt-1"></div></div>
+      <div class="md:col-span-2"><strong>Notes:</strong><div id="viewNotes" class="mt-1 whitespace-pre-wrap"></div></div>
+      <div class="md:col-span-2"><strong>Status / Verification:</strong> <span id="viewStatus" class="ml-2"></span></div>
+    </div>
+
+    <div class="mt-5 text-right">
+      <button id="closeViewBtn2" class="px-3 py-2 border border-gray-300 rounded-md">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div id="deleteModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-2xl shadow-2xl w-[90%] max-w-sm p-6 text-center modal-card leave" id="deleteModalBox">
+    <h2 class="text-xl font-semibold mb-2">Confirm Deletion</h2>
+    <p class="text-gray-600 mb-5">Are you sure you want to delete <span id="deleteName" class="font-medium text-red-600"></span>?</p>
+    <form id="deleteForm" method="post" class="flex justify-center gap-3">
+      {% csrf_token %}
+      <button type="button" id="cancelDelete" class="px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-100">Cancel</button>
+      <button type="submit" class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700">Delete</button>
+    </form>
+  </div>
+</div>
+</main>
+
+
+{% if messages %}
+<div id="toast"
+     class="fixed bottom-5 right-5 bg-white border border-gray-200 shadow-xl rounded-xl px-5 py-4 
+            text-sm font-medium text-gray-900 z-50 animate-slide-up flex items-center gap-3 transition-all duration-300">
+  {% for message in messages %}
+    {% if message.tags == 'success' %}
+      <span class="text-green-500">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M5 13l4 4L19 7" />
+        </svg>
+      </span>
+    {% elif message.tags == 'error' %}
+      <span class="text-red-500">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </span>
+    {% endif %}
+    <p class="{% if message.tags == 'success' %}text-green-700{% elif message.tags == 'error' %}text-red-700{% endif %}">
+      {{ message }}
+    </p>
+  {% endfor %}
+</div>
+
+<style>
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out forwards;
+}
+</style>
+
+<script>
+  setTimeout(() => {
+    const toast = document.getElementById("toast");
+    if (toast) {
+      toast.style.opacity = "0";
+      toast.style.transform = "translateY(20px)";
+      setTimeout(() => toast.remove(), 400);
+    }
+  }, 4000);
+</script>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const $ = id => document.getElementById(id);
+
+  // View modal elements
+  const viewModal = $("viewModal"),
+        viewName = $("viewName"),
+        viewEmail = $("viewEmail"),
+        viewPhone = $("viewPhone"),
+        viewPlace = $("viewPlace"),
+        viewDistrict = $("viewDistrict"),
+        viewPost = $("viewPost"),
+        viewPin = $("viewPin"),
+        viewLatitude = $("viewLatitude"),
+        viewLongitude = $("viewLongitude"),
+        viewRole = $("viewRole"),
+        viewNotes = $("viewNotes"),
+        viewStatus = $("viewStatus");
+
+  function showViewModalFromDataset(ds) {
+    viewName.textContent = ds.name || "-";
+    viewEmail.textContent = ds.email || "-";
+    viewPhone.textContent = ds.phone || "-";
+    viewPlace.textContent = ds.place || "-";
+    viewDistrict.textContent = ds.district || "-";
+    viewPost.textContent = ds.post || "-";
+    viewPin.textContent = ds.pin || "-";
+    viewLatitude.textContent = ds.latitude || "-";
+    viewLongitude.textContent = ds.longitude || "-";
+    viewRole.textContent = ds.type || ds.role || "-";
+    viewNotes.textContent = ds.notes || "-";
+    const status = (ds.status || "").toString().trim();
+    const verify = (ds.verify || "").toString().trim();
+    viewStatus.innerHTML = `${status ? `<span class="font-medium">${status}</span>` : ''} ${verify ? `<span class="${verify === 'Verified' ? 'text-green-600' : 'text-red-600'} ml-2">${verify}</span>` : ''}`;
+    // open modal
+    viewModal.classList.add('active');
+    // move focus for accessibility
+    const closeBtn = $("closeViewBtn"); if (closeBtn) closeBtn.focus();
+  }
+
+  // Attach click handlers to View buttons
+  document.querySelectorAll('.viewBtn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      showViewModalFromDataset(btn.dataset);
+    });
+  });
+
+  // Close view modal buttons
+  if ($("closeViewBtn")) $("closeViewBtn").addEventListener('click', () => viewModal.classList.remove('active'));
+  if ($("closeViewBtn2")) $("closeViewBtn2").addEventListener('click', () => viewModal.classList.remove('active'));
+  // backdrop click closes (uses data-close attribute)
+  if (viewModal) viewModal.addEventListener('click', (e) => { if (e.target === viewModal || e.target.dataset.close !== undefined) viewModal.classList.remove('active'); });
+
+  // Delete modal logic
+  const deleteModal = $('deleteModal'), deleteBox = $('deleteModalBox'), deleteForm = $('deleteForm'), deleteName = $('deleteName');
+  document.querySelectorAll('.deleteBtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.name || '';
+      const action = btn.dataset.action || '';
+      deleteName.textContent = `"${name}"`;
+      if (action) deleteForm.action = action; // set form action if provided
+      if (deleteModal && deleteBox) {
+        deleteModal.classList.remove('hidden');
+        // animate in
+        deleteBox.classList.remove('leave');
+        deleteBox.classList.add('enter');
+        // focus
+        setTimeout(()=>{ const cancel = $('cancelDelete'); if (cancel) cancel.focus(); }, 150);
+      }
+    });
+  });
+  if ($('cancelDelete')) $('cancelDelete').addEventListener('click', () => { if (deleteBox) { deleteBox.classList.remove('enter'); deleteBox.classList.add('leave'); } setTimeout(()=>deleteModal.classList.add('hidden'),180); });
+  if (deleteModal) deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal) { const cancel = $('cancelDelete'); if (cancel) cancel.click(); } });
+
+  // Filters (robust)
+  function normalize(v){ return (v||'').toString().toLowerCase().trim(); }
+  const fRole = $('filterRole'), fPhone = $('filterPhone'), fType = $('filterType'), fDistrict = $('filterDistrict'), fVerify = $('filterVerify');
+
+  // safe guard: don't throw if element missing
+  function filterRows(){
+    const rows = Array.from(document.querySelectorAll('tbody tr'));
+    const roleVal = normalize(fRole && fRole.value);
+    const phoneVal = (fPhone && fPhone.value || '').toString().trim();
+    const typeVal = normalize(fType && fType.value);
+    const districtVal = normalize(fDistrict && fDistrict.value);
+    const verifyVal = (fVerify && fVerify.value || '').toString().trim();
+
+    let anyVisible = false;
+
+    rows.forEach(r => {
+      // skip rows used for empty state message (they have class no-data)
+      if (r.classList.contains('no-data')) return;
+
+      const rRole = normalize(r.dataset.role || r.dataset.type || '');
+      const rPhone = (r.dataset.phone || '').toString();
+      const rType = normalize(r.dataset.type || r.dataset.role || '');
+      const rDistrict = normalize(r.dataset.district || '');
+      const rVerify = (r.dataset.verify || r.dataset.status || '').toString().trim();
+
+      // matching: role and phone are partial contains, selects require equality (case-insensitive)
+      const matchRole = !roleVal || rRole.includes(roleVal);
+      const matchPhone = !phoneVal || rPhone.includes(phoneVal);
+      const matchType = !typeVal || rType === typeVal;
+      const matchDistrict = !districtVal || rDistrict === districtVal;
+      const matchVerify = !verifyVal || rVerify === verifyVal;
+
+      const visible = matchRole && matchPhone && matchType && matchDistrict && matchVerify;
+      r.style.display = visible ? '' : 'none';
+      if (visible) anyVisible = true;
+    });
+
+    // toggle the "no data" row visibility when filters hide everything
+    const noDataRow = document.querySelector('tbody tr.no-data');
+    if (noDataRow) {
+      noDataRow.style.display = anyVisible ? 'none' : '';
+    }
+  }
+
+  // attach events safely
+  if (fRole) fRole.addEventListener('input', filterRows);
+  if (fPhone) fPhone.addEventListener('input', filterRows);
+  if (fType) fType.addEventListener('change', filterRows);
+  if (fDistrict) fDistrict.addEventListener('change', filterRows);
+  if (fVerify) fVerify.addEventListener('change', filterRows);
+
+  if ($('clearFilters')) $('clearFilters').addEventListener('click', () => { if (fRole) fRole.value=''; if (fPhone) fPhone.value=''; if (fType) fType.value=''; if (fDistrict) fDistrict.value=''; if (fVerify) fVerify.value=''; filterRows(); });
+
+  // Export button: navigates to same URL with query params (server should handle export or filtering)
+  if ($('exportBtn')) $('exportBtn').addEventListener('click', () => {
+    const params = new URLSearchParams();
+    if (fRole && fRole.value) params.append('role', fRole.value);
+    if (fPhone && fPhone.value) params.append('phone', fPhone.value);
+    if (fType && fType.value) params.append('type', fType.value);
+    if (fDistrict && fDistrict.value) params.append('district', fDistrict.value);
+    if (fVerify && fVerify.value) params.append('verify', fVerify.value);
+    const qs = params.toString();
+    window.location.href = qs ? `?${qs}` : window.location.pathname;
+  });
+
+  // Allow pressing Escape to close view/delete modals
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (viewModal && viewModal.classList.contains('active')) viewModal.classList.remove('active'); if (deleteModal && !deleteModal.classList.contains('hidden')) { deleteBox.classList.remove('enter'); deleteBox.classList.add('leave'); setTimeout(()=>deleteModal.classList.add('hidden'),180); } } });
+
+  // initial run
+  filterRows();
+
+  // enhance: auto-generate unique type options from data (adds options only if not present)
+  try{
+    const typeSelect = $('filterType');
+    if (typeSelect) {
+      const seen = new Set(Array.from(typeSelect.options).map(o => o.value.toString().toLowerCase()));
+      document.querySelectorAll('tbody tr').forEach(r => { const t = (r.dataset.type||'').trim(); if (t && !seen.has(t.toLowerCase())) { const opt = document.createElement('option'); opt.value = t; opt.textContent = t; typeSelect.appendChild(opt); seen.add(t.toLowerCase()); } });
+    }
+  }catch(e){/* ignore */}
+});
+</script>
+{% endblock %}

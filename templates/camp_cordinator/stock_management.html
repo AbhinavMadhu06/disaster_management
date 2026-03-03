@@ -1,0 +1,475 @@
+{% extends "camp_cordinator/base.html" %}
+{% load static %}
+
+{% block title %}Stock Management — Camp Coordinator{% endblock %}
+
+{% block head_extra %}
+<style>
+  :root{
+    --bg:#0f172a; /* page background */
+    --surface: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    --card-bg: rgba(255,255,255,0.02);
+    --glass: rgba(255,255,255,0.04);
+    --muted:#93a0b3;
+    --accent-1:#7c5cff;
+    --accent-2:#0ea5ff;
+    --accent-grad: linear-gradient(90deg,var(--accent-1),var(--accent-2));
+    --glass-border: rgba(255,255,255,0.06);
+    --success:#10b981;
+    --danger:#ef4444;
+  }
+
+  /* Page base */
+  body{font-family:Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background: radial-gradient(1200px 600px at 10% 10%, rgba(124,58,237,0.07), transparent), radial-gradient(900px 500px at 90% 90%, rgba(14,165,255,0.04), transparent), #f6f8fb; color:#0b1220;}
+  .container{max-width:1100px;margin:0 auto}
+
+  /* Header */
+  .page-hero{display:flex;align-items:center;gap:1rem;justify-content:space-between;margin-bottom:1rem}
+  .page-hero h1{font-size:1.55rem;margin:0;letter-spacing: -0.4px}
+  .page-hero .sub{color:var(--muted);margin-top:4px}
+
+  /* Buttons */
+  .btn{display:inline-flex;align-items:center;gap:.6rem;padding:.55rem .9rem;border-radius:10px;font-weight:600;font-size:.95rem;cursor:pointer;border:0;transition:transform .12s ease, box-shadow .18s ease}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--accent-grad);color:white;box-shadow:0 10px 30px rgba(15,23,42,0.08)}
+  .btn-outline{background:transparent;border:1px solid rgba(15,23,42,0.06);color:var(--muted)}
+  .btn-edit{background:#f59e0b;color:white}
+  .btn-del{background:var(--danger);color:white}
+
+  /* Card */
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.85));border-radius:14px;padding:1rem;box-shadow:0 10px 30px rgba(11,17,34,0.06);border:1px solid var(--glass-border)}
+  .card.glass{background:var(--card-bg);backdrop-filter: blur(8px);border:1px solid rgba(255,255,255,0.03)}
+
+  /* Filters */
+  .filter-bar{display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center}
+  .filter-bar input[type="text"], .filter-bar input[type="date"], .filter-bar select{border:1px solid rgba(11,17,34,0.06);border-radius:10px;padding:0.56rem 0.72rem;min-width:160px;font-size:.95rem;background:white}
+  .filter-bar input::placeholder{color:#aab6c3}
+
+  /* Table wrapper */
+  .table-wrap{overflow:auto;border-radius:12px;margin-top:.8rem}
+  table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:720px;font-size:0.95rem}
+  thead th{position:sticky;top:0;z-index:10;backdrop-filter: blur(6px);background:linear-gradient(180deg,#ffffff,#fbfdff);padding:12px 16px;font-size:.78rem;text-transform:uppercase;color:#62707f;border-bottom:1px solid rgba(11,17,34,0.04)}
+
+  tbody td{padding:14px 16px;vertical-align:middle;border-bottom:1px solid rgba(11,17,34,0.03);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  tbody tr{height:72px;transition:transform .18s ease, box-shadow .18s ease}
+  tbody tr:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(11,17,34,0.06);background:linear-gradient(180deg,#ffffff,#fcfdff)}
+
+  th:nth-child(1), td:nth-child(1){width:62px;text-align:left}
+  th:nth-child(2), td:nth-child(2){width:48%}
+  th:nth-child(3), td:nth-child(3){width:120px;text-align:center}
+  th:nth-child(4), td:nth-child(4){width:160px;text-align:center}
+  th:nth-child(5), td:nth-child(5){width:150px;text-align:center}
+
+  .font-medium{font-weight:700;color:#071129}
+
+  /* item-card */
+  .item-card{display:flex;align-items:center;gap:1rem;padding:.65rem;border-radius:12px;background:linear-gradient(180deg,#fff,#fbfdff);border:1px solid rgba(11,17,34,0.04);box-shadow:0 6px 18px rgba(11,17,34,0.03)}
+  .item-thumbnail{width:58px;height:58px;border-radius:10px;background:var(--accent-grad);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:1rem;flex-shrink:0}
+  .item-meta{flex:1;min-width:0}
+  .title{font-weight:800;font-size:1rem;margin-bottom:4px;white-space:normal;overflow:hidden;text-overflow:ellipsis}
+  .desc{color:var(--muted);font-size:.92rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+  .badge{background:rgba(11,17,34,0.04);padding:.28rem .5rem;border-radius:999px;font-weight:700;font-size:.82rem}
+  .date-small{font-size:.84rem;color:var(--muted)}
+
+  .row-actions{display:flex;gap:.6rem;justify-content:center}
+  .action-btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.45rem .6rem;border-radius:9px;font-size:.92rem;text-decoration:none;color:inherit;background:transparent;border:1px solid transparent;transition:all .12s ease}
+  .action-btn .material-icons{font-size:18px}
+  .action-btn:hover{transform:translateY(-2px)}
+  .action-btn[title*="Delete"]{border-color:rgba(239,68,68,0.08)}
+
+  /* compact action icons */
+  .action-btn[title*="Edit"]{background:linear-gradient(90deg, rgba(124,92,255,0.08), rgba(14,165,255,0.06));border-radius:8px}
+  .action-btn[title*="Edit"] .material-icons{color:rgba(6,78,59,0.9)}
+
+  /* Modals */
+  .modal{display:none;position:fixed;inset:0;z-index:60;background:rgba(7,9,14,0.46);justify-content:center;align-items:center;padding:1rem}
+  .modal.active{display:flex}
+  .modal-box{background:linear-gradient(180deg,#ffffff,#fbfdff);border-radius:12px;width:100%;max-width:520px;padding:1.25rem;box-shadow:0 30px 60px rgba(2,6,23,0.18);border:1px solid rgba(11,17,34,0.04);transform:translateY(8px);transition:transform .18s ease,opacity .18s ease}
+  .modal-box h3{margin:0 0 .6rem 0;font-size:1.05rem}
+  .modal-box p.muted{color:var(--muted)}
+
+  /* Toast */
+  #toast{right:24px;bottom:24px;left:auto;background:linear-gradient(90deg,#ffffff,#fbfdff);border:1px solid rgba(11,17,34,0.06);box-shadow:0 18px 40px rgba(11,17,34,0.06);padding:12px 16px;border-radius:12px}
+
+  /* small screens: convert table rows into stacked cards for readability but keep DOM intact for JS */
+  @media (max-width:820px){
+    table{min-width:620px}
+    tbody tr{height:auto;padding:8px 12px}
+    tbody td{display:table-cell;white-space:normal;padding:12px}
+    .item-meta .title{font-size:0.98rem}
+  }
+
+  @media (max-width:560px){
+    .filter-bar input[type="date"]{min-width:120px}
+    table{min-width:520px}
+    .page-hero{flex-direction:column;align-items:flex-start;gap:.6rem}
+    .btn{padding:.5rem .75rem}
+  }
+
+  /* Accessibility focus states */
+  a:focus, button:focus, input:focus, select:focus{outline: 3px solid rgba(14,165,255,0.12);outline-offset:2px}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container px-6 py-8">
+  <!-- Header -->
+  <div class="page-hero">
+    <div>
+      <h1 class="text-2xl font-extrabold">Stock Management</h1>
+      <p class="sub">Manage, filter, and update your camp inventory items.</p>
+    </div>
+    <div style="display:flex;gap:.6rem;align-items:center">
+      <a href="{% url 'add_stock' %}" class="btn btn-primary" title="Add Item">
+        <span class="material-icons" aria-hidden="true">add</span> Add Item
+      </a>
+    </div>
+  </div>
+
+  <!-- Filters card -->
+  <div class="card mb-6">
+    <div class="filter-bar">
+      <input id="filterType" type="text" placeholder="Search by type, id or count..." aria-label="Search by type">
+
+      <label class="muted" style="font-weight:600;margin-left:.4rem">Date:</label>
+      <input id="filterDateFrom" type="date" aria-label="From date" title="From date">From
+      <input id="filterDateTo"   type="date" aria-label="To date"   title="To date">
+
+
+      <label class="muted" style="margin-left:.4rem; font-weight:600;">Sort</label>
+      <select id="sortSelect" aria-label="Sort items">
+        <option value="date_desc">Newest → Oldest</option>
+        <option value="date_asc">Oldest → Newest</option>
+        <option value="name_asc">Name A → Z</option>
+        <option value="name_desc">Name Z → A</option>
+        <option value="count_desc">Count High → Low</option>
+        <option value="count_asc">Count Low → High</option>
+      </select>
+
+      <button id="resetBtn" class="btn btn-outline">Reset</button>
+      <div style="margin-left:auto" class="muted">Showing <span id="resultCount">0</span> items</div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap card glass">
+    <table aria-describedby="Stock table">
+      <thead>
+        <tr>
+          <th>SI No</th>
+          <th>Item</th>
+          <th>Count</th>
+          <th>Date</th>
+          <th class="text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="stockTable">
+  <!-- Server-rendered rows with data- attributes so JS can operate without serializing the queryset -->
+   {% for i in obj %}
+<tr data-id="{{ i.id }}" data-type="{{ i.type|lower }}" data-date="{{ i.date|date:'Y-m-d' }}" data-editable="{% if i.coordinator and i.coordinator.login_id == request.user %}1{% else %}0{% endif %}">
+    <td class="si-cell">{{ forloop.counter }}</td>
+    <td style="padding-right:0;">
+      <div class="item-card" role="group" aria-label="{{ i.type }} item">
+        <div class="item-thumbnail" aria-hidden="true">{{ i.type|slice:":1"|upper }}</div>
+        <div class="item-meta">
+          <div class="title" title="{{ i.type }}">{{ i.type }}</div>
+          <div class="desc">
+            <span class="badge">ID: {{ i.id }}</span>
+            <span class="date-small">{{ i.date }}</span>
+          </div>
+        </div>
+      </div>
+    </td>
+    <td class="text-center" data-count="{{ i.count }}" title="{{ i.count }}">{{ i.count }}</td>
+    <td class="text-center" title="{{ i.date }}">{{ i.date }}</td>
+    <td class="text-center">
+  <div class="row-actions">
+    {% if i.coordinator and i.coordinator.login_id == request.user %}
+      <!-- Owner sees Edit link -->
+      <a class="action-btn edit-link" title="Edit" href="{% url 'edit_stock' i.id %}">
+        <span class="material-icons" aria-hidden="true">edit</span>
+      </a>
+
+    {% else %}
+      <!-- Non-owners see a disabled edit icon (visual only) -->
+      <span class="action-btn" title="Edit (only owner)" aria-hidden="true" style="opacity:.35; pointer-events:none;">
+        <span class="material-icons">edit</span>
+      </span>
+    {% endif %}
+    <!-- Delete button only shown when owner (you can change to allow coordinators) -->
+    {% if i.coordinator and i.coordinator.login_id == request.user %}
+<button class="action-btn action-del" 
+        title="Delete" 
+        data-id="{{ i.id }}" 
+        data-url="{% url 'delete_stock' i.id %}">
+  <span class="material-icons">delete</span>
+</button>
+    {% endif %}
+  </div>
+</td>
+
+  </tr>
+  {% endfor %}
+</tbody>
+
+    </table>
+  </div>
+</div>
+<!-- Delete Confirmation Modal -->
+<div id="modalDelete" class="modal" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+  <div class="modal-box text-center">
+    <h3 id="delTitle">Delete Item?</h3>
+    <p class="muted mb-4">Are you sure you want to delete this item? This action cannot be undone.</p>
+    <div class="flex gap-3 justify-center">
+      <button onclick="closeModal('modalDelete')" class="btn btn-outline">Cancel</button>
+      <button id="confirmDeleteBtn" class="btn btn-del" title="Confirm delete">
+        <span class="material-icons">delete</span> Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+{% if messages %}
+<div id="toast"
+     class="fixed bottom-5 right-5 bg-white border border-gray-200 shadow-xl rounded-xl px-5 py-4 
+            text-sm font-medium text-gray-900 z-50 animate-slide-up flex items-center gap-3 transition-all duration-300">
+  {% for message in messages %}
+    {% if message.tags == 'success' %}
+      <span class="text-green-500">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M5 13l4 4L19 7" />
+        </svg>
+      </span>
+    
+    {% endif %}
+    <p class="{% if message.tags == 'success' %}text-green-700{% elif message.tags == 'error' %}text-red-700{% endif %}">
+      {{ message }}
+    </p>
+  {% endfor %}
+</div>
+
+<style>
+@keyframes slide-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.animate-slide-up { animation: slide-up 0.4s ease-out forwards; }
+</style>
+
+<script>
+  setTimeout(() => {
+    const toast = document.getElementById("toast");
+    if (toast) {
+      toast.style.opacity = "0";
+      toast.style.transform = "translateY(20px)";
+      setTimeout(() => toast.remove(), 400);
+    }
+  }, 4000);
+</script>
+{% endif %}
+ 
+
+
+<script>
+(function(){
+  const tbody = document.getElementById('stockTable');
+  const inputType = document.getElementById('filterType');
+  const inputDateFrom = document.getElementById('filterDateFrom');
+  const inputDateTo = document.getElementById('filterDateTo');
+  const filterEditable = document.getElementById('filterEditable');
+  const sortSelect = document.getElementById('sortSelect');
+  const resetBtn = document.getElementById('resetBtn');
+  const resultCount = document.getElementById('resultCount');
+
+  // keep original clones to re-filter
+  let originalRowClones = [];
+
+  // parseDate: accepts YYYY-MM-DD (ISO) primarily; fallback to Date.parse
+  function parseDate(value){
+    if(!value) return null;
+    // If it's already YYYY-MM-DD or full ISO, Date.parse works reliably
+    const t = Date.parse(value);
+    return isNaN(t) ? null : t;
+  }
+
+  function rowsArray(){ return Array.from(tbody.querySelectorAll('tr')); }
+
+  // stable sorting: attach original index
+  function sortRows(rows, mode){
+    const withIndex = rows.map((r, idx) => ({ r, idx }));
+    const getCount = el => {
+      const cEl = el.querySelector('[data-count]');
+      if(!cEl) return 0;
+      // prefer numeric dataset if present, fallback to displayed title.
+      const ds = cEl.dataset.count;
+      if(ds !== undefined) {
+        const n = parseInt(ds, 10);
+        return isNaN(n) ? 0 : n;
+      }
+      const t = parseInt(cEl.getAttribute('title') || '0', 10);
+      return isNaN(t) ? 0 : t;
+    };
+    const cmp = (a,b) => {
+      if(mode === 'date_asc' || mode === 'date_desc'){
+        const da = parseDate(a.r.dataset.date) || 0;
+        const db = parseDate(b.r.dataset.date) || 0;
+        const res = da - db;
+        return mode === 'date_asc' ? res : -res;
+      }
+      if(mode === 'name_asc' || mode === 'name_desc'){
+        const na = (a.r.dataset.type || '').localeCompare(b.r.dataset.type || '');
+        return mode === 'name_asc' ? na : -na;
+      }
+      if(mode === 'count_asc' || mode === 'count_desc'){
+        const ca = getCount(a.r);
+        const cb = getCount(b.r);
+        return mode === 'count_asc' ? (ca - cb) : (cb - ca);
+      }
+      // default newest -> oldest
+      const da = parseDate(a.r.dataset.date) || 0;
+      const db = parseDate(b.r.dataset.date) || 0;
+      return db - da;
+    };
+
+    withIndex.sort((a,b) => {
+      const c = cmp(a,b);
+      return c === 0 ? (a.idx - b.idx) : c; // preserve original order for ties
+    });
+    return withIndex.map(x=>x.r);
+  }
+
+  // render rows into tbody, reassign SI numbers
+  function renderRows(rows){
+    tbody.innerHTML = '';
+    rows.forEach((r, idx) => {
+      const node = r.cloneNode(true);
+      const siCell = node.querySelector('.si-cell');
+      if(siCell) siCell.textContent = idx + 1;
+      tbody.appendChild(node);
+    });
+    resultCount.textContent = rows.length;
+  }
+
+  // apply filters and sort
+  function applyFilters(){
+    const q = (inputType.value || '').trim().toLowerCase();
+    const from = inputDateFrom.value; // YYYY-MM-DD or empty
+    const to = inputDateTo.value;
+    const editableOnly = filterEditable.checked;
+    const sortMode = sortSelect.value;
+
+    let rows = originalRowClones.map(r => r.cloneNode(true));
+
+    rows = rows.filter(r => {
+      const type = (r.dataset.type || '').toLowerCase();
+      const id = (r.dataset.id || '').toLowerCase();
+      const cEl = r.querySelector('[data-count]');
+      const count = (cEl ? (cEl.dataset.count || cEl.getAttribute('title')) : '') + '';
+      const rowDate = (r.dataset.date || ''); // ISO YYYY-MM-DD ideally
+      const editable = r.dataset.editable === '1';
+
+      // search across type, id and count
+      if(q){
+        const combined = `${type} ${id} ${count}`.toLowerCase();
+        if(!combined.includes(q)) return false;
+      }
+
+      // date range: if only from given, require rowDate >= from,
+      // if only to given, require rowDate <= to,
+      // if both given, range inclusive
+      if(from){
+        const dRow = parseDate(rowDate);
+        const dFrom = parseDate(from);
+        if(dRow === null || dRow < dFrom) return false;
+      }
+      if(to){
+        const dRow = parseDate(rowDate);
+        const dTo = parseDate(to);
+        if(dRow === null || dRow > (dTo + 24*60*60*1000 - 1)) return false; // include whole day to be safe
+      }
+
+      if(editableOnly && !editable) return false;
+
+      return true;
+    });
+
+    rows = sortRows(rows, sortMode);
+    renderRows(rows);
+  }
+
+  function debounce(fn, wait){
+    let t;
+    return function(...args){
+      clearTimeout(t);
+      t = setTimeout(()=> fn.apply(this, args), wait);
+    };
+  }
+
+  function initialize(){
+    originalRowClones = rowsArray().map(r => r.cloneNode(true));
+    // default sort newest->oldest
+    const sorted = sortRows(originalRowClones.map(c => c.cloneNode(true)), 'date_desc');
+    renderRows(sorted);
+    // initialize result count
+    resultCount.textContent = tbody.querySelectorAll('tr').length;
+  }
+
+  // event bindings
+  inputType.addEventListener('input', debounce(applyFilters, 180));
+  inputDateFrom.addEventListener('change', applyFilters);
+  inputDateTo.addEventListener('change', applyFilters);
+  filterEditable.addEventListener('change', applyFilters);
+  sortSelect.addEventListener('change', applyFilters);
+
+  resetBtn.addEventListener('click', () => {
+    inputType.value = '';
+    inputDateFrom.value = '';
+    inputDateTo.value = '';
+    filterEditable.checked = false;
+    sortSelect.value = 'date_desc';
+    const sorted = sortRows(originalRowClones.map(c => c.cloneNode(true)), 'date_desc');
+    renderRows(sorted);
+  });
+
+  // Delete flow (client removal)
+  let deleteId = null;
+  function openModal(){ document.getElementById('modalDelete').classList.add('active'); }
+  window.closeModal = function(id){
+  document.getElementById(id).classList.remove('active');
+};
+window.openDelete = function(id){
+  deleteId = String(id);
+  openModal();
+};
+
+  document.body.addEventListener('click', function(e){
+    const del = e.target.closest('.action-del');
+    if(del){
+      const id = del.dataset.id || del.getAttribute('data-id');
+      if(id) window.openDelete(id);
+    }
+  });
+
+  document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+  if(deleteId !== null){
+    const row = tbody.querySelector('tr[data-id="' + deleteId + '"]');
+    const delButton = row ? row.querySelector('.action-del') : null;
+    const deleteUrl = delButton ? delButton.dataset.url : null;
+
+    if (deleteUrl) {
+      // Redirect to Django delete URL
+      window.location.href = deleteUrl;
+    }
+  }
+});
+
+
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active')); });
+  document.querySelectorAll('.modal').forEach(modal => { modal.addEventListener('click', ev => { if(ev.target === modal) modal.classList.remove('active'); }); });
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize); else initialize();
+})();
+</script>
+
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}News Report — Camp Coordinator{% endblock %}
+
+{% block head_extra %}
+<style>
+  :root {
+    --primary: #2563eb;
+    --secondary: #1e40af;
+    --bg-light: #f8fafc;
+    --text-dark: #0f172a;
+  }
+
+  body {
+    font-family: "Poppins", sans-serif;
+    background: var(--bg-light);
+  }
+
+  .news-container {
+    max-width: 1100px;
+    margin: 3rem auto;
+    padding: 0 1rem;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--secondary);
+    margin-bottom: 2rem;
+  }
+
+  .date-header {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 2rem 0 1rem;
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: 0.25rem;
+  }
+
+  .news-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .news-card {
+    background: #fff;
+    border-radius: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .news-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .news-image {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    background-color: #e2e8f0;
+  }
+
+  .news-content {
+    padding: 1rem 1.25rem 1.5rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .news-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+  }
+
+  .news-details {
+    font-size: 0.95rem;
+    color: #475569;
+    line-height: 1.5;
+    flex: 1;
+  }
+
+  .news-meta {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.75rem;
+    text-align: right;
+  }
+
+  @media (max-width: 640px) {
+    .news-card {
+      border-radius: 0.75rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="news-container">
+  <h1>📰 News Reports</h1>
+
+  {# Group news by date #}
+  {% regroup obj|dictsortreversed:"date" by date as date_groups %}
+
+  {% for group in date_groups %}
+    <div class="date-section">
+      <div class="date-header">
+        {{ group.grouper|date:"F d, Y" }}
+      </div>
+      <div class="news-grid">
+        {% for news_item in group.list %}
+        <div class="news-card">
+          {% if news_item.image %}
+            <img src="{{ news_item.image.url }}" alt="{{ news_item.news }}" class="news-image">
+          {% else %}
+            <div class="news-image"></div>
+          {% endif %}
+          <div class="news-content">
+            <div class="news-title">{{ news_item.news }}</div>
+            <div class="news-details">{{ news_item.details }}</div>
+            <div class="news-meta">By: {{ news_item.login_id.username }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% empty %}
+    <p class="text-center text-gray-500">No news available.</p>
+  {% endfor %}
+</div>
+{% endblock %}

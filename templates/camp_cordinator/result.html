@@ -1,0 +1,138 @@
+{#<!DOCTYPE html>#}
+{#<html>#}
+{#<head>#}
+{#    <title>Prediction Result</title>#}
+{#    <style>#}
+{#        body {#}
+{#            font-family: Arial, sans-serif;#}
+{#            margin: 20px;#}
+{#        }#}
+{#        .container {#}
+{#            max-width: 600px;#}
+{#            margin: 0 auto;#}
+{#            padding: 20px;#}
+{#            border: 1px solid #ddd;#}
+{#            border-radius: 5px;#}
+{#            background-color: #f9f9f9;#}
+{#        }#}
+{#        .title {#}
+{#            font-size: 24px;#}
+{#            margin-bottom: 20px;#}
+{#            text-align: center;#}
+{#        }#}
+{#        .data-item {#}
+{#            margin-bottom: 10px;#}
+{#            font-size: 18px;#}
+{#        }#}
+{#        .status {#}
+{#            font-weight: bold;#}
+{#            color: green;#}
+{#        }#}
+{#        .status.not-ok {#}
+{#            color: red;#}
+{#        }#}
+{#    </style>#}
+{#</head>#}
+{#<body>#}
+{#    <div class="container">#}
+{#        <div class="title">Prediction Result</div>#}
+{#        <div class="data-item">Status: <span class="status {{ status_class }}">{{ val }}</span></div>#}
+{#        <div class="data-item">City: <span class="status {{ city_name }}">{{ val }}</span></div>#}
+{#        <div class="data-item">Soil Type: {{ st }}</div>#}
+{#        <div class="data-item">Distance to River: {{ river }} km</div>#}
+{#        <div class="data-item">Elevation: {{ altitude }} meters</div>#}
+{#        <div class="data-item">Rainfall: {{ rainfall }} mm</div>#}
+{#        <div class="data-item">Weather Details:</div>#}
+{#        <pre>{{ weather_data | safe }}</pre>#}
+{#    </div>#}
+{#</body>#}
+{#</html>#}
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prediction Result</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .title {
+            font-size: 26px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #333;
+        }
+        .data-item {
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .label {
+            font-weight: bold;
+        }
+        .status {
+            font-weight: bold;
+            color: green;
+        }
+        .status.not-ok {
+            color: red;
+        }
+        .weather-details {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 16px;
+            line-height: 1.8;
+            border: 1px solid #ddd;
+        }
+        .weather-detail-item {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">Prediction Result</div>
+        <div class="data-item">
+            <span class="label">Status:</span>
+            <span class="status {% if status == 'ok' %}ok{% else %}not-ok{% endif %}">{{ val }}</span>
+        </div>
+        <div class="data-item">
+            <span class="label">City:</span> {{ city_name }}
+        </div>
+        <div class="data-item">
+            <span class="label">Soil Type:</span> {{ st }}
+        </div>
+        <div class="data-item">
+            <span class="label">Distance to River:</span> {{ river }} km
+        </div>
+        <div class="data-item">
+            <span class="label">Elevation:</span> {{ altitude }} meters
+        </div>
+        <div class="data-item">
+            <span class="label">Rainfall:</span> {{ rainfall }} mm
+        </div>
+        <div class="data-item">
+            <span class="label">Weather Details:</span>
+            <div class="weather-details">
+                {% for key, value in weather_data.items %}
+                    <div class="weather-detail-item"><strong>{{ key }}:</strong> {{ value }}</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

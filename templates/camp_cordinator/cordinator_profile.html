@@ -1,0 +1,156 @@
+{% extends "camp_cordinator/base.html" %}
+{% load static %}
+
+{% block title %}Coordinator Profile — {{ coordinator.name|default:coordinator.username }}{% endblock %}
+
+{% block content %}
+<!-- Professional, responsive coordinator profile (Tailwind CSS) -->
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-sky-50 py-10">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Card -->
+    <div class="relative bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
+
+      <!-- Top banner with subtle gradient -->
+      <div class="h-36 bg-gradient-to-r from-indigo-600 via-sky-500 to-indigo-600"></div>
+
+      <div class="-mt-20 px-6 pb-10">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+
+          <!-- Left column: avatar & quick actions -->
+          <div class="flex flex-col items-center lg:items-start">
+            <div class="relative w-40 h-40 rounded-full overflow-hidden border-8 border-white shadow-xl bg-gradient-to-br from-indigo-100 to-sky-100">
+              {% if coordinator.photo and coordinator.photo.url %}
+                <img src="{{ coordinator.photo.url }}" alt="{{ coordinator.name }}" class="object-cover w-full h-full" loading="lazy" />
+              {% else %}
+                <div class="flex items-center justify-center w-full h-full text-6xl font-extrabold text-indigo-700">{{ coordinator.name|default:coordinator.username|slice:":1"|upper }}</div>
+              {% endif %}
+            </div>
+
+            <h2 class="mt-4 text-2xl font-semibold text-slate-900">{{ coordinator.name|default:coordinator.username }}</h2>
+            <p class="text-sm text-slate-500 mt-1">@{{ coordinator.username }}</p>
+
+            <div class="mt-4 flex flex-wrap gap-2 justify-center lg:justify-start">
+              <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium {% if coordinator.status == 'Active' %}bg-emerald-100 text-emerald-800{% else %}bg-amber-100 text-amber-800{% endif %}">
+                <svg class="w-3 h-3" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true"><circle cx="4" cy="4" r="4"/></svg>
+                {{ coordinator.status }}
+              </span>
+
+              <a href="mailto:{{ coordinator.email }}" class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-white border hover:shadow-sm">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5v7A2.5 2.5 0 0 0 5.5 18h13A2.5 2.5 0 0 0 21 15.5v-7A2.5 2.5 0 0 0 18.5 6h-13A2.5 2.5 0 0 0 3 8.5z"/><path d="m3.8 7.6 7.2 5 7.2-5"/></svg>
+                Email
+              </a>
+
+              
+            </div>
+
+            <!-- Small info card -->
+            <div class="mt-6 w-full bg-gradient-to-br from-white to-slate-50 p-4 rounded-2xl border border-slate-100 shadow-sm">
+              <div class="text-xs text-slate-400">District</div>
+              <div class="font-semibold text-slate-800">{{ coordinator.district|default:'—' }}</div>
+
+              <div class="mt-3 text-xs text-slate-400">Post Office</div>
+              <div class="font-semibold text-slate-800">{{ coordinator.post|default:'—' }}</div>
+            </div>
+
+            <!-- Actions -->
+            <div class="mt-6 flex flex-col sm:flex-row gap-3 w-full">
+              <a href="{% url 'co_pass_change' %}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-2xl bg-rose-600 text-white font-medium shadow hover:brightness-105">Reset Password</a>
+            </div>
+
+          </div>
+
+          <!-- Middle & Right columns: details + stats -->
+          <div class="lg:col-span-2">
+            <div class="flex flex-col lg:flex-row gap-6">
+              <!-- Details panel -->
+              <div class="flex-1 bg-white/80 rounded-xl border p-6 shadow-sm">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="text-lg font-semibold text-slate-900">Contact & Address</h3>
+                    <p class="text-sm text-slate-500 mt-1">All essential information about this coordinator.</p>
+                  </div>
+
+                  <div class="flex items-center gap-2">
+                    <form method="post" action="">{% csrf_token %}
+                      <button type="submit" class="inline-flex items-center gap-2 px-3 py-1 rounded-full border bg-white text-sm">
+                        {% if coordinator.status == 'Active' %}Deactivate{% else %}Activate{% endif %}
+                      </button>
+                    </form>
+                    <form method="post" action="" onsubmit="return confirm('Delete coordinator — this action cannot be undone. Proceed?');">{% csrf_token %}
+                      <button type="submit" class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-white border text-rose-600">Delete</button>
+                    </form>
+                  </div>
+                </div>
+
+                <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <div class="text-xs text-slate-400">Full name</div>
+                    <div class="font-semibold mt-1 text-slate-800">{{ coordinator.name|default:'—' }}</div>
+                  </div>
+
+                  <div>
+                    <div class="text-xs text-slate-400">Email</div>
+                    <div class="font-semibold mt-1 text-slate-800">{{ coordinator.email|default:'—' }}</div>
+                  </div>
+
+                  <div class="sm:col-span-2">
+                    <div class="text-xs text-slate-400">Address</div>
+                    <div class="font-semibold mt-1 text-slate-800">{{ coordinator.place|default:'—' }}</div>
+                  </div>
+
+                  <div>
+                    <div class="text-xs text-slate-400">Phone</div>
+                    <div class="font-semibold mt-1 text-slate-800">{{ coordinator.phone|default:'—' }}</div>
+                  </div>
+
+                  <div>
+                    <div class="text-xs text-slate-400">PIN</div>
+                    <div class="font-semibold mt-1 text-slate-800">{{ coordinator.pin|default:'—' }}</div>
+                  </div>
+                </div>
+
+                <div class="mt-6 border-t pt-4 flex flex-col sm:flex-row gap-4">
+                  <div class="flex-1">
+                    <div class="text-xs text-slate-400">Account created</div>
+                    <div class="font-semibold mt-1">{{ coordinator.login_id.date_joined|date:'F j, Y' }}</div>
+                  </div>
+                  <div class="flex-1">
+                    <div class="text-xs text-slate-400">Last login</div>
+                    <div class="font-semibold mt-1">{% if coordinator.login_id.last_login %}{{ coordinator.login_id.last_login|date:'F j, Y, g:i a' }}{% else %}—{% endif %}</div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Right side: quick stats or meta (can be wired to real data) -->
+              
+            </div>
+
+            <!-- Optional: map or notes area -->
+            
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// copy text helper
+function copyToClipboard(value) {
+  if (!value) { alert('No phone number available'); return; }
+  navigator.clipboard?.writeText(value).then(() => {
+    const prev = document.activeElement;
+    alert('Phone number copied to clipboard');
+    if(prev) prev.focus();
+  }).catch(() => {
+    prompt('Copy phone number', value);
+  });
+}
+</script>
+{% endblock %}

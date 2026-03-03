@@ -1,0 +1,209 @@
+{% extends "camp_cordinator/base.html" %}
+{% load static %}
+
+{% block title %}Add Medicine — Camp Coordinator{% endblock %}
+
+{% block head_extra %}
+<style>
+  :root {
+    --primary: #147efb;
+    --accent: #6c5ce7;
+    --error: #dc2626;
+    --surface: #ffffff;
+    --bg: #f9fafb;
+    --text-main: #0f172a;
+    --text-muted: #475569;
+    --border: #e2e8f0;
+  }
+
+  body {
+    font-family: "Public Sans", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text-main);
+  }
+
+  .page-container {
+    min-height: calc(100vh - 100px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  .form-card {
+    background: var(--surface);
+    width: 100%;
+    max-width: 550px;
+    border-radius: 1rem;
+    box-shadow: 0 15px 30px rgba(15, 23, 42, 0.1);
+    padding: 2.5rem 3rem;
+    transition: all 0.3s ease-in-out;
+  }
+
+  h2 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 2rem;
+    position: relative;
+    color: var(--text-main);
+    padding-bottom: 50px;
+  }
+
+  h2::after {
+    content: "";
+    display: block;
+    width: 60px;
+    height: 4px;
+    background: linear-gradient(to right, var(--primary), var(--accent));
+    margin: 0.75rem auto 0;
+    border-radius: 999px;
+  }
+
+  .form-group {
+    margin-bottom: 1.4rem;
+  }
+
+  label {
+    display: block;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+
+  input {
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 0.65rem 0.9rem;
+    width: 100%;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(20, 126, 251, 0.15);
+  }
+
+  .error {
+    color: var(--error);
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+  }
+
+  .btn {
+    border-radius: 0.5rem;
+    padding: 0.65rem 1.4rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+  }
+
+  .btn-primary:hover {
+    background: #0f5fdc;
+  }
+
+  .btn-outline {
+    border: 1px solid var(--border);
+    background: white;
+    color: #334155;
+  }
+
+  .btn-outline:hover {
+    background: #f1f5f9;
+  }
+
+  @media (min-width: 768px) {
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem 2rem;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .actions {
+      grid-column: 1 / -1;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+  <div class="form-card">
+    <h2>Add Medicine</h2>
+
+    <form id="medicineForm" method="post">
+      {% csrf_token %}
+      <div class="form-grid">
+        <div class="form-group full-width">
+          <label for="medicine">Medicine Name</label>
+          <input id="medicine" name="medicine" placeholder="e.g. Paracetamol" required>
+          <div class="error" id="medicineError"></div>
+        </div>
+
+        <div class="form-group full-width">
+          <label for="quantity">Quantity</label>
+          <input id="quantity" name="quantity" type="number" min="1" placeholder="e.g. 20" required>
+          <div class="error" id="quantityError"></div>
+        </div>
+
+        <div class="actions">
+          <a href="{% url 'medical_support' %}" class="btn btn-outline">Cancel</a>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const form = document.getElementById("medicineForm");
+  const medicine = document.getElementById("medicine");
+  const quantity = document.getElementById("quantity");
+  const medicineError = document.getElementById("medicineError");
+  const quantityError = document.getElementById("quantityError");
+
+  form.addEventListener("submit", function (e) {
+    let valid = true;
+    medicineError.textContent = "";
+    quantityError.textContent = "";
+
+    // Validate Medicine Name
+    if (medicine.value.trim() === "") {
+      medicineError.textContent = "Please enter a medicine name.";
+      valid = false;
+    }
+
+    // Validate Quantity
+    const qty = parseInt(quantity.value);
+    if (isNaN(qty) || qty < 1) {
+      quantityError.textContent = "Quantity must be at least 1.";
+      valid = false;
+    }
+
+    if (!valid) e.preventDefault();
+  });
+</script>
+{% endblock %}
