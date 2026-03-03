@@ -659,20 +659,15 @@ def news(request):
 
 @login_required
 def admin_view_news_reporter(request):
-    a=News_reporter.objects.all()
-    return render(request,"admin/view news reporter.html",{"data":a})
+    return render(request,"admin/view news reporter.html",{"data": []})
 
 @login_required
 def accept_news_reporter(request,id):
-    a=News_reporter.objects.get(id=id)
-    a.status="accepted"
-    a.save()
+    pass
     return redirect('/myapp/admin_view_news_reporter/')
 @login_required
 def reject_news_reporter(request,id):
-    a=News_reporter.objects.get(id=id)
-    a.status="rejected"
-    a.save()
+    pass
     return redirect('/myapp/admin_view_news_reporter/')
 
 
@@ -1222,29 +1217,7 @@ def collect_donation(request):
 
 
 def news_reporter_registration(request):
-    name=request.POST["name"]
-    place=request.POST["place"]
-    post=request.POST["post"]
-    phone=request.POST["phone"]
-    chanelname=request.POST["chanelname"]
-    photo=request.FILES["photo"]
-    username=request.POST["username"]
-    password=request.POST["password"]
-    user = User.objects.create(username=username, password=make_password(password))
-    user.save()
-    user.groups.add(Group.objects.get(name='news_reporter'))
-    
-    a=News_reporter()
-    a.name=name
-    a.place=place
-    a.post=post
-    a.phone=phone
-    a.chanelname=chanelname
-    a.photo=photo
-    a.status='pending'
-    a.LOGIN=user
-    a.save()
-    return JsonResponse({"task": "success"})
+    return JsonResponse({"task": "failed", "error": "News_reporter model not found natively"})
 
 
 def add_news(request):
@@ -1259,14 +1232,17 @@ def add_news(request):
     a.details=details
     a.image=image
     a.date=date
-    a.NEWS_REPORTER=News_reporter.objects.get(LOGIN_id=lid)
-    a.save()
-    return JsonResponse({"task": "success"})
+    try:
+        a.login_id=User.objects.get(id=lid)
+        a.save()
+        return JsonResponse({"task": "success"})
+    except User.DoesNotExist:
+        return JsonResponse({"task": "failed", "error": "user not found"})
 
 
 def view_news(request):
     lid=request.POST["lid"]
-    a=News.objects.filter(NEWS_REPORTER__LOGIN_id=lid)
+    a=News.objects.filter(login_id=lid)
     l=[]
     for i in a:
         l.append({"id":i.id,"news":i.news,"details":i.details,"date":i.date,"image":i.image.url})
@@ -1309,34 +1285,12 @@ def delete_news(request):
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .models import News_reporter
 
 
 @csrf_exempt  # Required if you are not sending a CSRF token from Flutter
 def reporter_view_profile(request):
     if request.method == "POST":
-        try:
-            lid = request.POST.get("lid")
-
-
-            a = News_reporter.objects.get(LOGIN_id=lid)
-
-            photo_url = request.build_absolute_uri(a.photo.url) if a.photo else ""
-
-            return JsonResponse({
-                "status": "success",
-                "name": a.name,
-                "place": a.place,
-                "post": a.post,
-                "phone": a.phone,
-                "chanelname": a.chanelname,
-                "photo": photo_url
-            })
-
-        except News_reporter.DoesNotExist:
-            return JsonResponse({"status": "error", "message": "Reporter not found"}, status=404)
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=500)
+        return JsonResponse({"status": "error", "message": "Reporter model not implemented"}, status=404)
 
     return JsonResponse({"status": "error", "message": "Invalid request method"}, status=400)
 
