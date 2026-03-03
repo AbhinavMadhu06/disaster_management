@@ -646,8 +646,7 @@ def admin_profile(request):
     if not request.user.groups.filter(name='admin').exists():
             logout(request)
             return redirect('/myapp/login/')
-    admin = Admin.objects.all()
-    return render(request, 'admin/profile.html',{'admin':admin})
+    return render(request, 'admin/profile.html', {'admin': request.user})
 
 @login_required
 def news(request):
