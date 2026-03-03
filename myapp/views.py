@@ -1058,7 +1058,10 @@ def guid_cord_view(request):
 
 
 
+from django.views.decorators.csrf import csrf_exempt
+
 # "==============================flutter==============================================="
+@csrf_exempt
 def logincode(request):
     print(request.POST)
     un = request.POST['username']
