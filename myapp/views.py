@@ -1834,7 +1834,7 @@ def public_chatbot_response(request):
             # Create Database Entry
             Chatbot.objects.create(
                 LOGIN=usertable,
-                date=datetime.now().date(),
+                date=__import__('datetime').date.today(),
                 question=user_message,
                 answer=bot_response,
                 latitude=str(lat),
