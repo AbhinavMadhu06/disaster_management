@@ -446,7 +446,8 @@ def add_rescue(request):
         password=request.POST['password']
         user=User.objects.create(username=username,password=make_password(password))
         user.save()
-        user.groups.add(Group.objects.get(name='emergency_rescue'))
+        target_group, _ = Group.objects.get_or_create(name='emergency_rescue')
+        user.groups.add(target_group)
 
 
         obj=EmergencyRescue()
