@@ -1802,16 +1802,29 @@ def public_chatbot_response(request):
             # Fetch user
             usertable = User.objects.get(id=lid)
 
+            weather_info = ""
+            weather_data = data.get('weather')
+            if weather_data:
+                temp = weather_data.get('temperature_2m')
+                wind = weather_data.get('wind_speed_10m')
+                code = weather_data.get('weather_code')
+                weather_info = f"Current weather: Temp {temp}°C, Wind {wind} m/s, Condition code {code}."
+
             # Enhanced prompt so AI knows the weather context for that location
             enhanced_prompt = (
+                f"You are a Disaster Management AI Assistant. "
                 f"The user is at Latitude: {lat}, Longitude: {lon}. "
-                f"User Question: {user_message}. "
-                "Please provide relevant info or weather updates for this location if requested."
+                f"{weather_info}\n"
+                f"User Question: {user_message}\n"
+                "Provide helpful, clear, and relevant information or weather updates."
             )
 
-            # AI response logic (Call your Gemini/Model here)
-            # Example: bot_response = model.generate_content(enhanced_prompt).text
-            bot_response = "AI logic here. Use lat/lon for weather."
+            # AI response logic
+            try:
+                bot_response = model.generate_content(enhanced_prompt).text.strip()
+            except Exception as e:
+                print("Gemini API Error:", e)
+                bot_response = "I am currently unable to provide a response. Please try again later."
 
             # Create Database Entry
             Chatbot.objects.create(
@@ -1819,8 +1832,8 @@ def public_chatbot_response(request):
                 date=datetime.now().date(),
                 question=user_message,
                 answer=bot_response,
-                latitude=lat,
-                longitude=lon
+                latitude=str(lat),
+                longitude=str(lon)
             )
 
             return JsonResponse({'response': bot_response})
