@@ -2,137 +2,188 @@
 {% load static %}
 
 {% block head_extra %}
-  <style>
-    :root { --primary: #147efb; --accent: #6c5ce7; }
-    body { font-family: 'Public Sans', sans-serif; background: #f8fafc; color: #0f172a; }
+<style>
+    :root {
+        --primary: #147efb;
+        --accent: #6c5ce7;
+    }
+
+    body {
+        font-family: 'Public Sans', sans-serif;
+        background: #f8fafc;
+        color: #0f172a;
+    }
 
     /* Cards */
-    .reporter-card { transition: transform .18s ease, box-shadow .18s ease; border: 1px solid #eef2ff; }
-    .reporter-card:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(2,6,23,0.08); cursor: pointer; }
-    .reporter-card.selected { outline: 2px solid var(--primary); background: #f0f7ff; }
+    .reporter-card {
+        transition: transform .18s ease, box-shadow .18s ease;
+        border: 1px solid #eef2ff;
+    }
+
+    .reporter-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 14px 30px rgba(2, 6, 23, 0.08);
+        cursor: pointer;
+    }
+
+    .reporter-card.selected {
+        outline: 2px solid var(--primary);
+        background: #f0f7ff;
+    }
 
     /* Scrollable List */
     #reporterList {
-      max-height: calc(100vh - 250px);
-      overflow-y: auto;
-      padding-right: 0.5rem;
+        max-height: calc(100vh - 250px);
+        overflow-y: auto;
+        padding-right: 0.5rem;
     }
 
     /* Status badges */
-    .status-badge { display:inline-flex; align-items:center; padding:4px 12px; border-radius:999px; font-size:0.75rem; font-weight:600; }
-    .status-pending { background: #fef3c7; color: #92400e; }
-    .status-accepted { background: #dcfce7; color: #166534; }
-    .status-rejected { background: #fee2e2; color: #991b1b; }
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-accepted {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
 
     /* Preview Panel */
-    .preview-panel { position: sticky; top: 5.5rem; height: calc(100vh - 7rem); }
-    .preview-img { width: 100%; height: 300px; object-fit: cover; border-radius: 12px; }
-  </style>
+    .preview-panel {
+        position: sticky;
+        top: 5.5rem;
+        height: calc(100vh - 7rem);
+    }
+
+    .preview-img {
+        width: 100%;
+        height: 300px;
+        object-fit: cover;
+        border-radius: 12px;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <main class="container mx-auto px-6 py-10">
-  <div class="flex items-center justify-between mb-8">
-    <div>
-        <h1 class="text-3xl font-bold text-slate-900">News Reporter Requests</h1>
-        <p class="text-slate-500">Manage registrations and credentials for media personnel</p>
-    </div>
-    <div class="bg-white px-4 py-2 rounded-lg shadow-sm border text-sm font-medium">
-        Total Requests: {{ data|length }}
-    </div>
-  </div>
-
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-    <div>
-      <div class="bg-white rounded-xl shadow p-4 mb-4 flex gap-3">
-        <input id="filterName" type="text" placeholder="Search by name or channel..." class="flex-1 rounded-md border px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
-        <select id="filterStatus" class="rounded-md border px-2 py-1">
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="accepted">Accepted</option>
-        </select>
-      </div>
-
-      <div id="reporterList" class="space-y-4">
-        {% for i in data %}
-        <div class="reporter-card bg-white rounded-xl p-4 shadow-sm flex items-center gap-4"
-             onclick="showPreview(this)"
-             data-name="{{ i.name }}"
-             data-photo="{{ i.photo.url }}"
-             data-place="{{ i.place }}"
-             data-post="{{ i.post }}"
-             data-phone="{{ i.phone }}"
-             data-channel="{{ i.chanelname }}"
-             data-status="{{ i.status }}"
-             data-id="{{ i.id }}">
-          
-          <img src="{{ i.photo.url }}" class="w-20 h-20 rounded-lg object-cover bg-slate-100">
-          
-          <div class="flex-1">
-            <div class="flex justify-between items-start">
-                <h3 class="font-bold text-lg text-slate-800">{{ i.name }}</h3>
-                <span class="status-badge status-{{ i.status|lower }}">{{ i.status|upper }}</span>
-            </div>
-            <p class="text-sm text-blue-600 font-medium">{{ i.chanelname }}</p>
-            <p class="text-xs text-slate-500 mt-1"><i class="material-icons text-xs">place</i> {{ i.place }}</p>
-          </div>
-          
-          <div class="flex flex-col gap-2">
-            {% if i.status == 'pending' %}
-            <a href="/myapp/accept_news_reporter/{{ i.id }}" class="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-colors" title="Accept">
-                <span class="material-icons">check</span>
-            </a>
-            <a href="/myapp/reject_news_reporter/{{ i.id }}" class="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-colors" title="Reject">
-                <span class="material-icons">close</span>
-            </a>
-            {% endif %}
-          </div>
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900">News Reporter Requests</h1>
+            <p class="text-slate-500">Manage registrations and credentials for media personnel</p>
         </div>
-        {% endfor %}
-      </div>
-    </div>
-
-    <div class="preview-panel bg-white rounded-xl shadow p-6 hidden lg:block" id="emptyState">
-        <div class="h-full flex flex-col items-center justify-center text-slate-400">
-            <span class="material-icons text-6xl mb-4">account_box</span>
-            <p>Select a reporter to view full details</p>
+        <div class="bg-white px-4 py-2 rounded-lg shadow-sm border text-sm font-medium">
+            Total Requests: {{ data|length }}
         </div>
     </div>
 
-    <div class="preview-panel bg-white rounded-xl shadow p-0 overflow-hidden hidden" id="detailsPanel">
-        <img id="prevImg" src="" class="preview-img rounded-none">
-        <div class="p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 id="prevName" class="text-2xl font-bold"></h2>
-                <span id="prevStatus" class="status-badge"></span>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-6 mt-6">
-                <div>
-                    <label class="text-xs font-bold text-slate-400 uppercase">Channel</label>
-                    <p id="prevChannel" class="text-slate-900 font-medium text-lg"></p>
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-slate-400 uppercase">Phone</label>
-                    <p id="prevPhone" class="text-slate-900 font-medium"></p>
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-slate-400 uppercase">Place</label>
-                    <p id="prevPlace" class="text-slate-900"></p>
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-slate-400 uppercase">Post</label>
-                    <p id="prevPost" class="text-slate-900"></p>
-                </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+        <div>
+            <div class="bg-white rounded-xl shadow p-4 mb-4 flex gap-3">
+                <input id="filterName" type="text" placeholder="Search by name or channel..."
+                    class="flex-1 rounded-md border px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+                <select id="filterStatus" class="rounded-md border px-2 py-1">
+                    <option value="all">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="accepted">Accepted</option>
+                </select>
             </div>
 
-            <div id="actionButtons" class="mt-10 flex gap-4">
+            <div id="reporterList" class="space-y-4">
+                {% for i in data %}
+                <div class="reporter-card bg-white rounded-xl p-4 shadow-sm flex items-center gap-4"
+                    onclick="showPreview(this)" data-name="{{ i.name }}" data-photo="{{ i.photo.url }}"
+                    data-place="{{ i.place }}" data-post="{{ i.post }}" data-phone="{{ i.phone }}"
+                    data-channel="{{ i.chanelname }}" data-status="{{ i.status }}" data-id="{{ i.id }}">
+
+                    <img src="{{ i.photo.url }}" class="w-20 h-20 rounded-lg object-cover bg-slate-100">
+
+                    <div class="flex-1">
+                        <div class="flex justify-between items-start">
+                            <h3 class="font-bold text-lg text-slate-800">{{ i.name }}</h3>
+                            <span class="status-badge status-{{ i.status|lower }}">{{ i.status|upper }}</span>
+                        </div>
+                        <p class="text-sm text-blue-600 font-medium">{{ i.chanelname }}</p>
+                        <p class="text-xs text-slate-500 mt-1"><i class="material-icons text-xs">place</i> {{ i.place }}
+                        </p>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        {% if i.status == 'pending' %}
+                        <a href="/myapp/accept_news_reporter/{{ i.id }}"
+                            class="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-colors"
+                            title="Accept">
+                            <span class="material-icons">check</span>
+                        </a>
+                        <a href="/myapp/reject_news_reporter/{{ i.id }}"
+                            class="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-colors"
+                            title="Reject">
+                            <span class="material-icons">close</span>
+                        </a>
+                        {% endif %}
+                    </div>
                 </div>
+                {% endfor %}
+            </div>
         </div>
-    </div>
 
-  </div>
+        <div class="hidden lg:block">
+            <div class="preview-panel bg-white rounded-xl shadow p-6" id="emptyState">
+                <div class="h-full flex flex-col items-center justify-center text-slate-400">
+                    <span class="material-icons text-6xl mb-4">account_box</span>
+                    <p>Select a reporter to view full details</p>
+                </div>
+            </div>
+
+            <div class="preview-panel bg-white rounded-xl shadow p-0 overflow-hidden hidden" id="detailsPanel">
+                <img id="prevImg" src="" class="preview-img rounded-none">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 id="prevName" class="text-2xl font-bold"></h2>
+                        <span id="prevStatus" class="status-badge"></span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-6 mt-6">
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase">Channel</label>
+                            <p id="prevChannel" class="text-slate-900 font-medium text-lg"></p>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase">Phone</label>
+                            <p id="prevPhone" class="text-slate-900 font-medium"></p>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase">Place</label>
+                            <p id="prevPlace" class="text-slate-900"></p>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase">Post</label>
+                            <p id="prevPost" class="text-slate-900"></p>
+                        </div>
+                    </div>
+
+                    <div id="actionButtons" class="mt-10 flex gap-4">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
 </main>
 {% endblock %}
 
@@ -155,7 +206,7 @@
         document.getElementById('prevPhone').textContent = d.phone;
         document.getElementById('prevPlace').textContent = d.place;
         document.getElementById('prevPost').textContent = d.post;
-        
+
         const statusEl = document.getElementById('prevStatus');
         statusEl.textContent = d.status.toUpperCase();
         statusEl.className = `status-badge status-${d.status.toLowerCase()}`;
@@ -164,8 +215,8 @@
         const actionBox = document.getElementById('actionButtons');
         if (d.status.toLowerCase() === 'pending') {
             actionBox.innerHTML = `
-                <a href="/myapp/accept_news_reporter/{i.id}" class="flex-1 text-center bg-green-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-green-200">Accept Application</a>
-                <a href="/myapp/reject_news_reporter/{i.id}" class="flex-1 text-center bg-red-50 text-red-600 py-3 rounded-xl font-bold">Reject</a>
+                <a href="/myapp/accept_news_reporter/${d.id}" class="flex-1 text-center bg-green-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-green-200">Accept Application</a>
+                <a href="/myapp/reject_news_reporter/${d.id}" class="flex-1 text-center bg-red-50 text-red-600 py-3 rounded-xl font-bold">Reject</a>
             `;
         } else {
             actionBox.innerHTML = `<div class="w-full text-center py-3 bg-slate-100 rounded-xl text-slate-500 font-medium">Decision finalized</div>`;
@@ -173,7 +224,7 @@
     }
 
     // Search Filtering
-    document.getElementById('filterName').addEventListener('input', function(e) {
+    document.getElementById('filterName').addEventListener('input', function (e) {
         const term = e.target.value.toLowerCase();
         document.querySelectorAll('.reporter-card').forEach(card => {
             const name = card.dataset.name.toLowerCase();
@@ -182,7 +233,7 @@
         });
     });
 
-    document.getElementById('filterStatus').addEventListener('change', function(e) {
+    document.getElementById('filterStatus').addEventListener('change', function (e) {
         const status = e.target.value.toLowerCase();
         document.querySelectorAll('.reporter-card').forEach(card => {
             const cStatus = card.dataset.status.toLowerCase();
