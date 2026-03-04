@@ -291,7 +291,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='guideline',
             name='coordinator',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='myapp.coordinator'),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='myapp.coordinator'),
         ),
         migrations.AlterField(
             model_name='guideline',
@@ -331,7 +331,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='medicine',
             name='coordinator',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='myapp.coordinator'),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='myapp.coordinator'),
         ),
         migrations.AlterField(
             model_name='medicine',
@@ -351,7 +351,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='needs',
             name='coordinator',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='myapp.coordinator'),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='myapp.coordinator'),
         ),
         migrations.AlterField(
             model_name='needs',
@@ -446,7 +446,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='stock',
             name='coordinator',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='myapp.coordinator'),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='myapp.coordinator'),
         ),
         migrations.AlterField(
             model_name='stock',
