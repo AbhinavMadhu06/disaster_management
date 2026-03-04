@@ -28,6 +28,9 @@ urlpatterns=[
     path('news/', views.news),
     path('admin_home/', views.index_page),
     path('add_rescue/', views.add_rescue,name='add_rescue'),
+    path('admin_view_news_reporter/', views.admin_view_news_reporter),
+    path('accept_news_reporter/<int:id>', views.accept_news_reporter),
+    path('reject_news_reporter/<int:id>', views.reject_news_reporter),
 
 
     path('ad_camp_post', views.ad_camp_post, name='ad_camp_post'),
