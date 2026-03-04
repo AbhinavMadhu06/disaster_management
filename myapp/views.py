@@ -1673,7 +1673,7 @@ def chat_history(request):
 
         return JsonResponse(history, safe=False)
 
-    except Volunteer.DoesNotExist:
+    except User.DoesNotExist:
         return JsonResponse({'response': 'User not found'}, status=404)
 #
 
@@ -1854,7 +1854,7 @@ def public_chat_history(request):
             return JsonResponse({'response': 'User ID missing'}, status=400)
 
         usertable = User.objects.get(id=lid)
-        chats = Chatbot.objectms.filter(LOGIN=usertable).order_by('id')
+        chats = Chatbot.objects.filter(LOGIN=usertable).order_by('id')
 
         # Returning history to Flutter
         history = [{"question": c.question, "answer": c.answer} for c in chats]
@@ -2365,14 +2365,28 @@ def api_manual_predict(request):
 @csrf_exempt
 def api_view_requests(request):
     lid=request.POST['lid']
-    a=EmergencyAlert.objects.filter(emergency_rescue__login_id_id=lid)
+    a=EmergencyAlert.objects.filter(emergency_rescue__login_id_id=lid).order_by('-id')
     l=[]
     for i in a:
+        # Determine alert type based on the text
+        alert_text = i.alert.lower()
+        alert_type = 'SOS' if 'sos' in alert_text else 'Normal'
+        
+        # Get user details safely
+        user_name = "Unknown"
+        user_phone = "Not Available"
+        if i.PUBLIC:
+            user_name = i.PUBLIC.name
+            user_phone = str(i.PUBLIC.phone)
+
         l.append({"id":str(i.id),
                   "alert":i.alert,
                   "status":i.status,
                   "latitude":i.latitude,
                   "longitude":i.longitude,
+                  "type": alert_type,
+                  "user_name": user_name,
+                  "phone": user_phone
                   })
     return JsonResponse({"status":"ok","data":l})
 
@@ -2537,3 +2551,171 @@ def public_reject_need(request):
         except Needs.DoesNotExist:
             return JsonResponse({"status": "error", "message": "Need not found"})
 
+@csrf_exempt
+def api_poll_alerts(request):
+    try:
+        lid = request.POST.get('lid')
+        
+        # Determine the emergency rescue team associated with this lid
+        team = EmergencyRescue.objects.get(login_id_id=lid)
+        
+        # Get pending SOS alerts
+        query = EmergencyAlert.objects.filter(emergency_rescue=team, status='pending', alert__icontains='SOS')
+        
+        # Return only the count and a snippet of the latest one to trigger the local notification
+        count = query.count()
+        if count > 0:
+            latest = query.order_by('-id').first()
+            return JsonResponse({
+                'status': 'ok',
+                'count': count,
+                'latest_alert': latest.alert,
+                'id': latest.id
+            })
+        else:
+            return JsonResponse({'status': 'empty'})
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'msg': str(e)})
+
+@csrf_exempt
+def api_poll_donations(request):
+    try:
+        lid = request.POST.get('lid')
+        
+        # Get the volunteer associated with this lid
+        volunteer = Volunteer.objects.get(login_id_id=lid)
+        
+        # Get uncollected donations assigned to this volunteer
+        query = DonateGoods.objects.filter(volunteer=volunteer, status='Not Collected')
+        
+        count = query.count()
+        if count > 0:
+            latest = query.order_by('-id').first()
+            return JsonResponse({
+                'status': 'ok',
+                'count': count,
+                'item': latest.item,
+                'quantity': latest.quantity,
+                'id': latest.id
+            })
+        else:
+            return JsonResponse({'status': 'empty'})
+    except Exception as e:
+         return JsonResponse({'status': 'error', 'msg': str(e)})
+
+@csrf_exempt
+def api_unified_poll(request):
+    try:
+        lid = request.POST.get('lid')
+        user_type = request.POST.get('type') # public, volunteer, news_reporter, emergency_rescue
+        
+        results = []
+
+        # 1. General Notifications
+        roll_map = {
+            'public': 'Public',
+            'volunteer': 'Volunteer',
+            'emergency_rescue': 'Emergency Team',
+        }
+        roll = roll_map.get(user_type)
+        if roll:
+            latest_notif = Notification.objects.filter(roll=roll).order_by('-id').first()
+            if latest_notif:
+                results.append({
+                    'type': 'broadcast',
+                    'id': latest_notif.id,
+                    'title': latest_notif.title,
+                    'body': latest_notif.description
+                })
+
+        # 2. News (For everyone)
+        latest_news = News.objects.order_by('-id').first()
+        if latest_news:
+             results.append({
+                'type': 'news',
+                'id': latest_news.id,
+                'title': 'Latest News',
+                'body': latest_news.news
+            })
+
+        # 3. Guidelines
+        latest_guide = Guideline.objects.order_by('-id').first()
+        if latest_guide:
+             results.append({
+                'type': 'guideline',
+                'id': latest_guide.id,
+                'title': 'New Guideline: ' + latest_guide.title,
+                'body': latest_guide.guideline[:100]
+            })
+
+        # 4. Complaint Replies
+        latest_reply = Complaint.objects.filter(login_id=lid).exclude(reply='').exclude(reply__isnull=True).order_by('-id').first()
+        if latest_reply:
+             results.append({
+                'type': 'complaint_reply',
+                'id': latest_reply.id,
+                'title': 'Complaint Replied',
+                'body': 'Your complaint has been answered: ' + latest_reply.reply[:50]
+            })
+
+        # 5. Role Specific
+        if user_type == 'emergency_rescue':
+            team = EmergencyRescue.objects.get(login_id_id=lid)
+            alert = EmergencyAlert.objects.filter(emergency_rescue=team, status='pending', alert__icontains='SOS').order_by('-id').first()
+            if alert:
+                results.append({
+                    'type': 'sos_alert',
+                    'id': alert.id,
+                    'title': 'SOS Emergency!',
+                    'body': alert.alert
+                })
+        
+        elif user_type == 'volunteer':
+            volunteer = Volunteer.objects.get(login_id_id=lid)
+            # Donations
+            donation = DonateGoods.objects.filter(volunteer=volunteer, status='Not Collected').order_by('-id').first()
+            if donation:
+                results.append({
+                    'type': 'donation',
+                    'id': donation.id,
+                    'title': 'New Donation to Collect',
+                    'body': f"{donation.item} ({donation.quantity})"
+                })
+            # Medical Requests
+            med = MedicalRequest.objects.filter(volunteer=volunteer, status='pending').order_by('-id').first()
+            if med:
+                results.append({
+                    'type': 'medical_request',
+                    'id': med.id,
+                    'title': 'New Medical Request',
+                    'body': f"Medicine: {med.medicine.medicine}"
+                })
+        
+        elif user_type == 'public':
+            # Check for SOS updates
+            public_user = Public.objects.get(login_id=lid)
+            alert_update = EmergencyAlert.objects.filter(PUBLIC=public_user).exclude(status='pending').order_by('-id').first()
+            if alert_update:
+                results.append({
+                    'type': 'sos_update',
+                    'id': alert_update.id,
+                    'title': f"SOS Status: {alert_update.status}",
+                    'body': f"Your alert '{alert_update.alert[:30]}...' is now {alert_update.status}",
+                    'status': alert_update.status # Include status for change detection
+                })
+        
+        elif user_type == 'news_reporter':
+            reporter = News_reporter.objects.get(LOGIN_id=lid)
+            results.append({
+                'type': 'reporter_status',
+                'id': reporter.id,
+                'title': 'Account Status Update',
+                'body': f"Your reporter account is currently: {reporter.status}",
+                'status': reporter.status
+            })
+
+        return JsonResponse({'status': 'ok', 'notifications': results})
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'msg': str(e)})

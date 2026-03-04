@@ -1,6 +1,6 @@
 from django.urls import path
 
-from myapp import views
+from . import views
 
 urlpatterns=[
     path('', views.root_redirect),  # redirect base URL to login page
@@ -120,4 +120,5 @@ urlpatterns=[
     path('public_add_donation_from_need/', views.public_add_donation_from_need),
     path('public_accept_need/', views.public_accept_need),
     path('public_reject_need/', views.public_reject_need),
-]
+    path('api_unified_poll/', views.api_unified_poll, name='api_unified_poll'),
+    ]
