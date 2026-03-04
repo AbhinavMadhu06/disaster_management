@@ -79,7 +79,7 @@ def getmaindata(lat,lon):
 
     # API keys
     elevation_api_key = 'AIzaSyB3y0szjZmNj_w2q9Vnc08ZL_FU6Z4VTFE'  # Replace with your Google Elevation API key
-    weather_api_key = 'AIzaSyB3y0szjZmNj_w2q9Vnc08ZL_FU6Z4VTFE'  # Replace with your OpenWeatherMap API key
+    weather_api_key = 'bc27bff6cb4fc4b7223deed82b0c96d1'  # Replace with your OpenWeatherMap API key
 
     # Get elevation
     elevation = get_elevation(lat, lon, elevation_api_key)
