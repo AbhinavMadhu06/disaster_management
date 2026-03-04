@@ -1106,6 +1106,7 @@ def logincode(request):
 
 #==========vulenteer=============
 
+@csrf_exempt
 def volunteer_home(request):
     user = request.user
 
@@ -1121,6 +1122,7 @@ def volunteer_home(request):
         return JsonResponse({"task": "failed", "error": "invalid_id"})
 
 
+@csrf_exempt
 def view_needs_volunteer(request):
 
     volunteer = Volunteer.objects.get(login_id=request.user)
@@ -1138,6 +1140,7 @@ def view_needs_volunteer(request):
 
     return JsonResponse({"task": "success", "data": data})
 
+@csrf_exempt
 def create_medical_request_volunteer(request):
 
     volunteer = Volunteer.objects.get(login_id=request.user)
@@ -1157,6 +1160,7 @@ def create_medical_request_volunteer(request):
         "medical_request_id": mr.id
     })
 
+@csrf_exempt
 def view_services_volunteer(request):
 
     volunteer = Volunteer.objects.get(login_id=request.user)
@@ -1171,6 +1175,7 @@ def view_services_volunteer(request):
 
     return JsonResponse({"task": "success", "data": data})
 
+@csrf_exempt
 def add_service_volunteer(request):
 
     volunteer = Volunteer.objects.get(login_id=request.user)
@@ -1190,6 +1195,7 @@ def add_service_volunteer(request):
     })
 
 
+@csrf_exempt
 def chatbot_volunteer(request):
 
     return JsonResponse({
@@ -1197,6 +1203,7 @@ def chatbot_volunteer(request):
         "reply": ""
     })
 
+@csrf_exempt
 def view_donated_goods_volunteer(request):
 
     donations = DonateGoods.objects.all()
@@ -1211,6 +1218,7 @@ def view_donated_goods_volunteer(request):
 
     return JsonResponse({"task": "success", "data": data})
 
+@csrf_exempt
 def collect_donation(request):
     volunteer = Volunteer.objects.get(login_id=request.user)
 
@@ -1252,6 +1260,7 @@ def news_reporter_registration(request):
     return JsonResponse({"task": "success"})
 
 
+@csrf_exempt
 def add_news(request):
     news=request.POST["news"]
     details = request.POST["details"]
@@ -1269,6 +1278,7 @@ def add_news(request):
     return JsonResponse({"task": "success"})
 
 
+@csrf_exempt
 def view_news(request):
     lid=request.POST["lid"]
     a=News.objects.filter(NEWS_REPORTER__LOGIN_id=lid)
@@ -1374,6 +1384,7 @@ def user_change_password(request):
 
 
 
+@csrf_exempt
 def public_view_news(request):
     a=News.objects.all()
     l=[]
@@ -1419,6 +1430,7 @@ from django.http import JsonResponse
 from .models import Public
 
 
+@csrf_exempt
 def public_view_profile(request):
     if request.method == "POST":
         try:
@@ -1447,6 +1459,7 @@ def public_view_profile(request):
 
     return JsonResponse({"status": "error", "message": "Invalid request method"})
 ##########################################################################
+@csrf_exempt
 def volunteer_view_medicines(request):
     a=Medicine.objects.all()
     l=[]
@@ -1481,6 +1494,7 @@ def volunteer_view_needs(request):
 
 from django.http import JsonResponse
 
+@csrf_exempt
 def volunteer_view_donations(request):
     try:
         # Get volunteer login ID from the Flutter app
@@ -1520,11 +1534,13 @@ def volunteer_view_donations(request):
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)})
 
+@csrf_exempt
 def volunteer_view_profile(request):
     lid=request.POST["lid"]
     a=Volunteer.objects.get(login_id=lid)
     return JsonResponse({"status":"ok","name":a.name,"email":a.email,"phone":a.phone,"place":a.place,"post":a.post,"pin":a.pin,"district":a.district,"age":a.age,"gender":a.gender,"coordinator":a.coordinator.name})
 
+@csrf_exempt
 def add_medical_support_vol(request):
     lid=request.POST["lid"]
     mid=request.POST["mid"]
@@ -1535,6 +1551,7 @@ def add_medical_support_vol(request):
     a.save()
     return JsonResponse({"status":"ok"})
 
+@csrf_exempt
 def view_medical_support_vol(request):
     lid=request.POST["lid"]
     a=MedicalRequest.objects.filter(volunteer__login_id=lid)
@@ -1544,6 +1561,7 @@ def view_medical_support_vol(request):
 
     return JsonResponse({"status":"ok","data":l})
 
+@csrf_exempt
 def add_services(request):
     lid=request.POST["lid"]
     servicetype=request.POST["servicetype"]
@@ -1555,6 +1573,7 @@ def add_services(request):
     a.save()
     return JsonResponse({"status":"ok"})
 
+@csrf_exempt
 def volunteer_view_services(request):
     lid=request.POST["lid"]
     a=Services.objects.filter(volunteer__login_id=lid)
@@ -1563,6 +1582,7 @@ def volunteer_view_services(request):
         l.append({"id":i.id,"servicetype":i.servicetype,"details":i.details})
     return JsonResponse({"status":"ok","data":l})
 
+@csrf_exempt
 def volunteer_change_password(request):
     oldpassword = request.POST['oldpassword']
     newpassword = request.POST['newpassword']
@@ -1577,6 +1597,7 @@ def volunteer_change_password(request):
     else:
         return JsonResponse({'status': 'failed'})
 
+@csrf_exempt
 def view_donation_vol(request):
     lid=request.POST["lid"]
     a=DonateGoods.objects.filter(volunteer__login_id_id=lid)
@@ -1764,6 +1785,7 @@ from datetime import datetime
 from .models import User, Chatbot
 
 
+@csrf_exempt
 def public_chatbot_response(request):
     if request.method == 'POST':
         try:
@@ -1810,6 +1832,7 @@ def public_chatbot_response(request):
     return JsonResponse({'response': 'Invalid method'}, status=405)
 
 
+@csrf_exempt
 def public_chat_history(request):
     try:
         lid = request.GET.get('lid')
@@ -1827,6 +1850,7 @@ def public_chat_history(request):
         return JsonResponse({'response': 'User not found'}, status=404)
     except Exception as e:
         return JsonResponse({'response': str(e)}, status=500)
+@csrf_exempt
 def public_send_complaint(request):
     complaint=request.POST['complaint']
     lid=request.POST['lid']
@@ -1838,6 +1862,7 @@ def public_send_complaint(request):
     a.save()
     return JsonResponse({'status': 'ok'})
 
+@csrf_exempt
 def public_view_reply(request):
     lid=request.POST['lid']
     a=Complaint.objects.filter(login_id=lid)
@@ -1847,6 +1872,7 @@ def public_view_reply(request):
     return JsonResponse({"status":"ok","data":l})
 
 
+@csrf_exempt
 def er_view_profile(request):
     lid=request.POST['lid']
     a=EmergencyRescue.objects.get(login_id=lid)
@@ -1862,6 +1888,7 @@ def er_view_profile(request):
                          "notes":a.notes
                          })
 
+@csrf_exempt
 def er_change_password(request):
     oldpassword = request.POST['oldpassword']
     newpassword = request.POST['newpassword']
@@ -1881,6 +1908,7 @@ from django.http import JsonResponse
 from .models import EmergencyAlert
 
 
+@csrf_exempt
 def view_user_reports(request):
     alerts = EmergencyAlert.objects.all()
     report_list = []
@@ -1893,6 +1921,7 @@ def view_user_reports(request):
             "longitude": item.longitude,
         })
     return JsonResponse({'status':'ok', "data":report_list})
+@csrf_exempt
 def emergency_request(request):
     return JsonResponse({'status':'ok'})
 
@@ -1942,6 +1971,7 @@ from django.http import JsonResponse
 from .models import DonateGoods
 
 
+@csrf_exempt
 def public_view_donations(request):
     try:
 
@@ -1970,6 +2000,7 @@ def public_view_donations(request):
 from django.http import JsonResponse
 from .models import Camp, Volunteer
 
+@csrf_exempt
 def get_donation_metadata(request):
     try:
         camps = Camp.objects.all().values('id', 'name')
@@ -2124,6 +2155,7 @@ from myapp.Randomforest import random_forest
 API_KEY = 'YOUR_WEATHERBIT_API_KEY'
 
 
+@csrf_exempt
 def api_get_predict(request):
     """
     API for Automated Prediction via Lat/Lon
@@ -2256,6 +2288,7 @@ def api_get_predict(request):
 from django.http import JsonResponse
 from myapp.Randomforest import random_forest
 
+@csrf_exempt
 def api_manual_predict(request):
 
     try:
@@ -2315,6 +2348,7 @@ def api_manual_predict(request):
         }, status=500)
 
 
+@csrf_exempt
 def api_view_requests(request):
     lid=request.POST['lid']
     a=EmergencyAlert.objects.filter(emergency_rescue__login_id_id=lid)
@@ -2362,6 +2396,7 @@ from django.http import JsonResponse
 from .models import EmergencyRescue, Public, EmergencyAlert, User
 
 
+@csrf_exempt
 def public_view_rescue_teams(request):
     try:
         teams = EmergencyRescue.objects.filter(status='Varified')
@@ -2380,6 +2415,7 @@ def public_view_rescue_teams(request):
         return JsonResponse({"status": "error", "message": str(e)})
 
 
+@csrf_exempt
 def public_send_emergency_request(request):
     try:
         lid = request.POST.get('lid')
@@ -2409,6 +2445,7 @@ def public_send_emergency_request(request):
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)})
 
+@csrf_exempt
 def public_view_needs(request):
     a = Needs.objects.all()
     l = []
