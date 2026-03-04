@@ -1094,10 +1094,14 @@ def logincode(request):
             return JsonResponse(data)
 
         else:
-            data = {"task": "invalid"}
+            data = {"task": "invalid", "type": "none"}
             r = json.dumps(data)
             print(r)
             return JsonResponse(data)
+    else:
+        # Avoid ValueError: The view didn't return an HttpResponse object
+        return JsonResponse({"task": "invalid", "error": "Invalid credentials", "type": "none"})
+
 
 
 #==========vulenteer=============
@@ -1220,6 +1224,7 @@ def collect_donation(request):
     return JsonResponse({"task": "success"})
 
 
+@csrf_exempt
 def news_reporter_registration(request):
     name=request.POST["name"]
     place=request.POST["place"]
@@ -1231,7 +1236,8 @@ def news_reporter_registration(request):
     password=request.POST["password"]
     user = User.objects.create(username=username, password=make_password(password))
     user.save()
-    user.groups.add(Group.objects.get(name='news_reporter'))
+    target_group, _ = Group.objects.get_or_create(name='news_reporter')
+    user.groups.add(target_group)
     
     a=News_reporter()
     a.name=name
@@ -1381,6 +1387,7 @@ def public_view_news(request):
                   })
     return JsonResponse({"status":"ok","data":l})
 
+@csrf_exempt
 def public_registration(request):
     name=request.POST["name"]
     phone=request.POST["phone"]
@@ -1395,7 +1402,8 @@ def public_registration(request):
 
     user = User.objects.create(username=username, password=make_password(password))
     user.save()
-    user.groups.add(Group.objects.get(name='public'))
+    target_group, _ = Group.objects.get_or_create(name='public')
+    user.groups.add(target_group)
 
     a=Public()
     a.name=name
