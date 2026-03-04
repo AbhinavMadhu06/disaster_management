@@ -1799,8 +1799,13 @@ def public_chatbot_response(request):
             lat = data.get('latitude', '0')
             lon = data.get('longitude', '0')
 
-            # Fetch user
-            usertable = User.objects.get(id=lid)
+            # Fetch user securely
+            usertable = None
+            if lid:
+                try:
+                    usertable = User.objects.get(id=lid)
+                except (User.DoesNotExist, ValueError):
+                    pass
 
             weather_info = ""
             weather_data = data.get('weather')
@@ -1838,8 +1843,6 @@ def public_chatbot_response(request):
 
             return JsonResponse({'response': bot_response})
 
-        except User.DoesNotExist:
-            return JsonResponse({'response': 'User not found'}, status=404)
         except Exception as e:
             return JsonResponse({'response': str(e)}, status=500)
 
@@ -1850,11 +1853,13 @@ def public_chatbot_response(request):
 def public_chat_history(request):
     try:
         lid = request.GET.get('lid')
-        if not lid:
-            return JsonResponse({'response': 'User ID missing'}, status=400)
-
-        usertable = User.objects.get(id=lid)
-        chats = Chatbot.objects.filter(LOGIN=usertable).order_by('id')
+        chats = []
+        if lid:
+            try:
+                usertable = User.objects.get(id=lid)
+                chats = Chatbot.objects.filter(LOGIN=usertable).order_by('id')
+            except (User.DoesNotExist, ValueError):
+                pass
 
         # Returning history to Flutter
         history = [{"question": c.question, "answer": c.answer} for c in chats]
