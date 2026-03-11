@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from . django .models import *
+from .models import *
 # Register your models here.
 
 admin.site.register(News_reporter)
