@@ -259,9 +259,9 @@
 
   .cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1.5rem;
-    margin-top: 1rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    justify-items: center;
   }
 
   .dash-card {
@@ -558,6 +558,19 @@
         grid-template-columns: 1fr;
         gap: 1rem;
         align-items: start;
+      }
+
+      .cards-grid .card {
+        width: 100%;
+        max-width: 350px;
+      }
+
+      .cards-grid>a:nth-last-child(2) {
+        grid-column: 2;
+      }
+
+      .cards-grid>a:last-child {
+        grid-column: 3;
       }
 
       /* responsive columns: 2 on sm, 3 on lg (breakpoints chosen to mimic Tailwind) */
