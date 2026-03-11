@@ -2567,6 +2567,7 @@ def api_unified_poll(request):
         return JsonResponse({'status': 'error', 'msg': str(e)})
 
 
+@csrf_exempt
 def public_chat_history(request):
     try:
         lid = request.GET.get('lid')
@@ -2581,6 +2582,7 @@ def public_chat_history(request):
         return JsonResponse(history, safe=False)
     except User.DoesNotExist:
         return JsonResponse({'response': 'User not found'}, status=404)
+@csrf_exempt
 def public_chatbot_response(request):
     if request.method != 'POST':
         return JsonResponse({'response': 'Invalid request method'}, status=405)
@@ -2641,6 +2643,7 @@ def public_chatbot_response(request):
         
         
 
+@csrf_exempt
 def chatbot_response(request):
     if request.method != 'POST':
         return JsonResponse({'response': 'Invalid request method'}, status=405)
@@ -2693,6 +2696,7 @@ def chatbot_response(request):
     except Exception as e:
         return JsonResponse({'response': 'Server Error'}, status=500)
 
+@csrf_exempt
 def chat_history(request):
     try:
         lid = request.GET.get('lid')
