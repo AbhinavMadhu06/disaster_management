@@ -76,7 +76,7 @@ input:hover, select:hover { border-color: #93c5fd; }
             class="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition outline-none">
             <option value="">Select a coordinator</option>
             {% for coordinator in coordinators %}
-            <option value="{{ coordinator.id }}">{{ coordinator.username }}</option>
+            <option value="{{ coordinator.id }}">{{ coordinator.name }}</option>
             {% endfor %}
           </select>
           <a href="{% url 'add_coordinator' %}"
