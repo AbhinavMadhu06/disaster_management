@@ -2622,7 +2622,8 @@ def public_chatbot_response(request):
         try:
             bot_response = model.generate_content(system_prompt).text.strip()
         except Exception as ai_error:
-            bot_response = "I can't predict right now, but stay alert to local news."
+            print("GEMINI API ERROR (Public Chatbot):", str(ai_error))
+            bot_response = f"I can't predict right now. Error: {str(ai_error)}"
 
         # 🔹 Save to DB
         user_obj = User.objects.get(id=lid)
@@ -2678,8 +2679,9 @@ def chatbot_response(request):
 
         try:
             bot_response = model.generate_content(system_prompt).text.strip()
-        except Exception:
-            bot_response = "Unable to predict at the moment. Please stay tuned to local alerts."
+        except Exception as ai_error:
+            print("GEMINI API ERROR (Chatbot Response):", str(ai_error))
+            bot_response = f"Unable to predict at the moment. Error: {str(ai_error)}"
 
         # 🔹 Save chat (Filters by lid to ensure privacy)
         user_obj = User.objects.get(id=lid)
