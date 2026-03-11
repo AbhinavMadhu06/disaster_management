@@ -127,7 +127,7 @@
     </div>
 
     <form id="coordinatorForm" enctype="multipart/form-data" novalidate class="form-body"
-          method="post" action="{% url 'add_codinator_post' %}">
+          method="post" action="{% url 'edit_co' obj.id %}">
       {% csrf_token %}
 
       <!-- Full name -->
