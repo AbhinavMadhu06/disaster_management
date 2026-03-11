@@ -167,9 +167,9 @@ def edit_camp(request, id):
 
         district=request.POST['district']
         address=request.POST['address']
-        pin=request.POST['pin']
-        contact=request.POST['contact']
-        total_members=request.POST['total-members']
+        pin=request.POST.get('pin', '')
+        contact=request.POST.get('contact', '')
+        total_members=request.POST.get('total-members', '')
         latitude=request.POST['latitude']
         longitude=request.POST['longitude']
         status=request.POST['status']
