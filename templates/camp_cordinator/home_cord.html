@@ -559,12 +559,17 @@
         gap: 1.2rem;
       }
 
-      .cards-grid a:nth-child(7) {
-        grid-column: 2;
-      }
+      /* Center the last row (2 cards) */
+      @media (min-width: 1024px) {
+        .cards-grid a:nth-child(7) {
+          grid-column: 1 / span 1;
+          justify-self: end;
+        }
 
-      .cards-grid a:nth-child(8) {
-        grid-column: 3;
+        .cards-grid a:nth-child(8) {
+          grid-column: 3 / span 1;
+          justify-self: start;
+        }
       }
 
       .cards-grid .card {
