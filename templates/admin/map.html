@@ -62,7 +62,7 @@
               <div>
                 <label for="stateSelect" class="block text-sm font-medium text-slate-700">District</label>
                 <select name="district" id="stateSelect" class="mt-1 block w-full rounded-xl border border-slate-200 px-3 py-2" aria-label="Filter by state">
-                  <option value="all">All states</option>
+                  <option value="all">All districts</option>
                 </select>
               </div>
 
@@ -142,15 +142,85 @@
 
     // Sample dataset (simulate API)
     const disasters = [
-      { id: 1, title: 'Colombo Floods', state: 'Western', type:'Flood', severity:'critical', lat:6.9271, lng:79.8612, date:'2025-09-15', summary:'Severe floods due to heavy rainfall affecting low-lying areas.' },
-      { id: 2, title: 'Kandy Landslide', state: 'Central', type:'Landslide', severity:'high', lat:7.2906, lng:80.6337, date:'2025-09-10', summary:'Landslide triggered by prolonged rain. Rescue teams deployed.' },
-      { id: 3, title: 'Galle Coastal Storm', state: 'Southern', type:'Storm', severity:'high', lat:6.0535, lng:80.2210, date:'2025-09-12', summary:'Strong coastal winds and storm surge reported.' },
-      { id: 4, title: 'Jaffna Small Fire', state: 'Northern', type:'Fire', severity:'moderate', lat:9.6615, lng:80.0255, date:'2025-09-05', summary:'Local market fire contained by volunteers.' },
-      { id: 5, title: 'Polonnaruwa Earthquake', state: 'North Central', type:'Earthquake', severity:'moderate', lat:7.9400, lng:81.0000, date:'2025-08-22', summary:'Minor tremors felt, no major damage reported.' },
-      { id: 6, title: 'Matara Flooding', state: 'Southern', type:'Flood', severity:'high', lat:5.9487, lng:80.5355, date:'2025-09-14', summary:'River overflow in Matara district.' },
-      { id: 7, title: 'Badulla Landslide', state: 'Uva', type:'Landslide', severity:'critical', lat:6.9935, lng:81.0550, date:'2025-09-11', summary:'Multiple houses affected on steep slopes.' },
-      { id: 8, title: 'Batticaloa Storm', state: 'Eastern', type:'Storm', severity:'high', lat:7.7110, lng:81.6784, date:'2025-09-13', summary:'Heavy rains and localized flooding.' }
-    ];
+  { id:1, title:'Wayanad Landslide 2024', state:'Wayanad', type:'Landslide', severity:'critical', lat:11.6854, lng:76.1320, date:'2024-07-30', summary:'Major landslide caused by heavy rainfall.' },
+
+  { id:2, title:'Kerala Floods 2018', state:'Pathanamthitta', type:'Flood', severity:'critical', lat:9.2648, lng:76.7870, date:'2018-08-16', summary:'One of the worst floods in Kerala history.' },
+
+  { id:3, title:'Idukki Landslide', state:'Idukki', type:'Landslide', severity:'high', lat:9.9189, lng:77.1025, date:'2020-08-06', summary:'Rajamala landslide affecting tea estate workers.' },
+
+  { id:4, title:'Kozhikode Flood', state:'Kozhikode', type:'Flood', severity:'moderate', lat:11.2588, lng:75.7804, date:'2023-06-12', summary:'Urban flooding in Kozhikode city.' },
+
+  { id:5, title:'Alappuzha Coastal Storm', state:'Alappuzha', type:'Storm', severity:'moderate', lat:9.4981, lng:76.3388, date:'2022-11-02', summary:'Strong winds and rain affected coastal villages.' },
+
+  { id:6, title:'Palakkad Heatwave', state:'Palakkad', type:'Heatwave', severity:'moderate', lat:10.7867, lng:76.6548, date:'2023-04-10', summary:'Extreme summer temperature recorded.' },
+
+  { id:7, title:'Thrissur Flood', state:'Thrissur', type:'Flood', severity:'high', lat:10.5276, lng:76.2144, date:'2019-08-08', summary:'Heavy monsoon rainfall caused severe flooding in Thrissur district.' },
+
+{ id:8, title:'Malappuram Landslide', state:'Malappuram', type:'Landslide', severity:'high', lat:11.0510, lng:76.0711, date:'2020-08-07', summary:'Hilly regions experienced landslides after continuous rainfall.' },
+
+{ id:9, title:'Kannur Coastal Flood', state:'Kannur', type:'Flood', severity:'moderate', lat:11.8745, lng:75.3704, date:'2021-10-15', summary:'Heavy rains caused flooding in coastal regions.' },
+
+{ id:10, title:'Kasargod Storm Surge', state:'Kasargod', type:'Storm', severity:'moderate', lat:12.4996, lng:74.9869, date:'2022-11-05', summary:'Cyclonic winds and storm surge affected coastal areas.' },
+
+{ id:11, title:'Ernakulam Urban Flood', state:'Ernakulam', type:'Flood', severity:'high', lat:9.9312, lng:76.2673, date:'2023-07-18', summary:'Heavy rainfall led to waterlogging across Kochi city.' },
+
+{ id:12, title:'Kottayam Flood', state:'Kottayam', type:'Flood', severity:'high', lat:9.5916, lng:76.5222, date:'2018-08-15', summary:'Rising river levels flooded residential areas.' },
+
+{ id:13, title:'Kollam Coastal Erosion', state:'Kollam', type:'Storm', severity:'moderate', lat:8.8932, lng:76.6141, date:'2021-06-20', summary:'Strong waves caused coastal erosion and property damage.' },
+
+{ id:14, title:'Thiruvananthapuram Flood', state:'Thiruvananthapuram', type:'Flood', severity:'moderate', lat:8.5241, lng:76.9366, date:'2022-10-17', summary:'Heavy rainfall led to flooding in low-lying areas.' },
+
+{ id:15, title:'Wayanad Flash Flood', state:'Wayanad', type:'Flood', severity:'high', lat:11.6854, lng:76.1320, date:'2019-08-09', summary:'Sudden flash floods triggered by intense rainfall.' },
+
+{ id:16, title:'Idukki Dam Overflow', state:'Idukki', type:'Flood', severity:'critical', lat:9.8496, lng:76.9725, date:'2018-08-16', summary:'Idukki dam shutters opened due to extreme water levels.' },
+
+{ id:17, title:'Pathanamthitta River Flood', state:'Pathanamthitta', type:'Flood', severity:'high', lat:9.2648, lng:76.7870, date:'2018-08-17', summary:'Pamba river overflow affected nearby towns.' },
+
+{ id:18, title:'Kozhikode Landslide', state:'Kozhikode', type:'Landslide', severity:'high', lat:11.2588, lng:75.7804, date:'2019-08-14', summary:'Hilly terrain collapsed due to prolonged rainfall.' },
+
+{ id:19, title:'Palakkad Drought', state:'Palakkad', type:'Drought', severity:'moderate', lat:10.7867, lng:76.6548, date:'2022-03-12', summary:'Low rainfall resulted in severe water shortage.' },
+
+{ id:20, title:'Alappuzha Flood', state:'Alappuzha', type:'Flood', severity:'high', lat:9.4981, lng:76.3388, date:'2018-08-16', summary:'Backwater regions submerged during Kerala floods.' },
+{ id:21, title:'Thrissur Heatwave', state:'Thrissur', type:'Heatwave', severity:'moderate', lat:10.5276, lng:76.2144, date:'2023-04-18', summary:'Unusually high summer temperatures affected daily life.' },
+
+{ id:22, title:'Malappuram Flash Flood', state:'Malappuram', type:'Flood', severity:'high', lat:11.0732, lng:76.0740, date:'2021-07-25', summary:'Sudden heavy rainfall caused flash flooding in rural areas.' },
+
+{ id:23, title:'Kannur Landslide', state:'Kannur', type:'Landslide', severity:'moderate', lat:11.8745, lng:75.3704, date:'2020-08-10', summary:'Small landslides reported in hilly regions after heavy rain.' },
+
+{ id:24, title:'Kasargod Flood', state:'Kasargod', type:'Flood', severity:'moderate', lat:12.4996, lng:74.9869, date:'2019-08-11', summary:'Monsoon rainfall led to flooding in low-lying villages.' },
+
+{ id:25, title:'Ernakulam Storm', state:'Ernakulam', type:'Storm', severity:'moderate', lat:9.9312, lng:76.2673, date:'2022-10-22', summary:'Strong winds and heavy rain disrupted transport and power.' },
+
+{ id:26, title:'Kottayam Landslide', state:'Kottayam', type:'Landslide', severity:'high', lat:9.5916, lng:76.5222, date:'2020-08-08', summary:'Hill slopes collapsed due to saturated soil after rainfall.' },
+
+{ id:27, title:'Kollam Flood', state:'Kollam', type:'Flood', severity:'high', lat:8.8932, lng:76.6141, date:'2018-08-17', summary:'Heavy monsoon rains caused river overflow and flooding.' },
+
+{ id:28, title:'Thiruvananthapuram Heatwave', state:'Thiruvananthapuram', type:'Heatwave', severity:'moderate', lat:8.5241, lng:76.9366, date:'2024-04-02', summary:'High humidity and temperature created heat stress.' },
+
+{ id:29, title:'Wayanad Storm', state:'Wayanad', type:'Storm', severity:'moderate', lat:11.6854, lng:76.1320, date:'2021-05-18', summary:'Strong winds damaged houses and crops.' },
+
+{ id:30, title:'Idukki Flash Flood', state:'Idukki', type:'Flood', severity:'high', lat:9.9189, lng:77.1025, date:'2019-08-09', summary:'Rapid rainfall runoff caused flash flooding in valleys.' },
+
+{ id:31, title:'Kozhikode Coastal Storm', state:'Kozhikode', type:'Storm', severity:'moderate', lat:11.2588, lng:75.7804, date:'2022-11-11', summary:'Coastal winds and rainfall affected fishing communities.' },
+
+{ id:32, title:'Palakkad Drought', state:'Palakkad', type:'Drought', severity:'high', lat:10.7867, lng:76.6548, date:'2023-03-15', summary:'Prolonged dry weather affected agriculture.' },
+
+{ id:33, title:'Alappuzha Flood', state:'Alappuzha', type:'Flood', severity:'high', lat:9.4981, lng:76.3388, date:'2019-08-08', summary:'Backwater areas submerged due to monsoon rainfall.' },
+
+{ id:34, title:'Thrissur Urban Flood', state:'Thrissur', type:'Flood', severity:'moderate', lat:10.5276, lng:76.2144, date:'2022-06-20', summary:'Waterlogging occurred in city roads after intense rain.' },
+
+{ id:35, title:'Malappuram Heatwave', state:'Malappuram', type:'Heatwave', severity:'moderate', lat:11.0510, lng:76.0711, date:'2024-04-05', summary:'Extreme temperatures recorded during summer.' },
+
+{ id:36, title:'Kannur Flood', state:'Kannur', type:'Flood', severity:'high', lat:11.8745, lng:75.3704, date:'2018-08-16', summary:'Heavy rainfall caused rivers to overflow.' },
+
+{ id:37, title:'Kasargod Landslide', state:'Kasargod', type:'Landslide', severity:'moderate', lat:12.4996, lng:74.9869, date:'2020-08-09', summary:'Minor landslides reported in hillside villages.' },
+
+{ id:38, title:'Ernakulam Heatwave', state:'Ernakulam', type:'Heatwave', severity:'moderate', lat:9.9312, lng:76.2673, date:'2023-04-14', summary:'High summer temperatures affected urban residents.' },
+
+{ id:39, title:'Kollam Storm', state:'Kollam', type:'Storm', severity:'moderate', lat:8.8932, lng:76.6141, date:'2021-11-12', summary:'Strong coastal winds caused tree falls and power cuts.' },
+
+{ id:40, title:'Pathanamthitta Landslide', state:'Pathanamthitta', type:'Landslide', severity:'high', lat:9.2648, lng:76.7870, date:'2020-08-07', summary:'Heavy rain triggered landslides in hilly forest areas.' },
+];
 
     // DOM refs
     const stateSelect = document.getElementById('stateSelect');
@@ -186,7 +256,7 @@
     // Map setup
     let map, markerLayer, markersMap = {};
     function initMap() {
-      map = L.map('map', { preferCanvas: true }).setView([7.5, 80.5], 7);
+      map = L.map('map', { preferCanvas: true }).setView([10.8505, 76.2711], 7);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
       }).addTo(map);
