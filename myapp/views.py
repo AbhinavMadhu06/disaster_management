@@ -1700,175 +1700,16 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import User, Chatbot
 
 
-
-@csrf_exempt
-def chatbot_response(request):
-    if request.method != 'POST':
-        return JsonResponse({'response': 'Invalid request method'}, status=405)
-
-    try:
-        data = json.loads(request.body.decode('utf-8'))
-
-        # 🔹 Data from Flutter
-        user_message = data.get('message', '').strip()
-        lid = data.get('lid')
-        lat = data.get('lat')
-        lon = data.get('lon')
-        weather = data.get('weather')  # 👈 coming from Flutter (Open-Meteo)
-
-        if not user_message or not lid:
-            return JsonResponse(
-                {'response': 'Message or user ID missing'},
-                status=400
-            )
-
-        # 🔹 Format weather text if available
-        weather_text = ""
-        if weather:
-            temp = weather.get('temperature_2m')
-            wind = weather.get('wind_speed_10m')
-            code = weather.get('weather_code')
-
-            weather_text = (
-                f"Current weather details:\n"
-                f"Temperature: {temp}°C\n"
-                f"Wind Speed: {wind} m/s\n"
-                f"Weather Code: {code}\n"
-            )
-
-        # 🔹 AI prompt
-        system_prompt = f"""
-You are a Disaster Management AI Assistant.
-
-User Location:
-Latitude: {lat}
-Longitude: {lon}
-
-{weather_text}
-
-User Question:
-{user_message}
-
-Give a helpful, clear response.
-"""
-
-        # 🔹 AI response (Gemini / LLM)
-        try:
-            bot_response = model.generate_content(system_prompt).text.strip()
-        except Exception as ai_error:
-            print("AI Error:", ai_error)
-            bot_response = "I am currently unable to respond. Please try again later."
-
-        # 🔹 Save chat
-        user_obj = User.objects.get(id=lid)
-        Chatbot.objects.create(
-            LOGIN=user_obj,
-            date=datetime.date.today(),
-            question=user_message,
-            answer=bot_response,
-            latitude=str(lat),
-            longitude=str(lon)
-        )
-
-        return JsonResponse({'response': bot_response})
-
-    except Exception as e:
-        print("Server Error:", e)
-        return JsonResponse(
-            {'response': 'Internal server error'},
-            status=500
-        )
-
-
 import json
 from django.http import JsonResponse
 from datetime import datetime
 from .models import User, Chatbot
 
 
-@csrf_exempt
-def public_chatbot_response(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body.decode('utf-8'))
-
-            user_message = data.get('message', '').strip()
-            lid = data.get('lid')
-
-            # These are received automatically from the Flutter location logic
-            lat = data.get('latitude', '0')
-            lon = data.get('longitude', '0')
-
-            # Fetch user securely
-            usertable = None
-            if lid:
-                try:
-                    usertable = User.objects.get(id=lid)
-                except (User.DoesNotExist, ValueError):
-                    pass
-
-            weather_info = ""
-            weather_data = data.get('weather')
-            if weather_data:
-                temp = weather_data.get('temperature_2m')
-                wind = weather_data.get('wind_speed_10m')
-                code = weather_data.get('weather_code')
-                weather_info = f"Current weather: Temp {temp}°C, Wind {wind} m/s, Condition code {code}."
-
-            # Enhanced prompt so AI knows the weather context for that location
-            enhanced_prompt = (
-                f"You are a Disaster Management AI Assistant. "
-                f"The user is at Latitude: {lat}, Longitude: {lon}. "
-                f"{weather_info}\n"
-                f"User Question: {user_message}\n"
-                "Provide helpful, clear, and relevant information or weather updates."
-            )
-
-            # AI response logic
-            try:
-                bot_response = model.generate_content(enhanced_prompt).text.strip()
-            except Exception as e:
-                print("Gemini API Error:", e)
-                bot_response = "I am currently unable to provide a response. Please try again later."
-
-            # Create Database Entry
-            Chatbot.objects.create(
-                LOGIN=usertable,
-                date=__import__('datetime').date.today(),
-                question=user_message,
-                answer=bot_response,
-                latitude=str(lat),
-                longitude=str(lon)
-            )
-
-            return JsonResponse({'response': bot_response})
-
-        except Exception as e:
-            return JsonResponse({'response': str(e)}, status=500)
-
-    return JsonResponse({'response': 'Invalid method'}, status=405)
 
 
-@csrf_exempt
-def public_chat_history(request):
-    try:
-        lid = request.GET.get('lid')
-        chats = []
-        if lid:
-            try:
-                usertable = User.objects.get(id=lid)
-                chats = Chatbot.objects.filter(LOGIN=usertable).order_by('id')
-            except (User.DoesNotExist, ValueError):
-                pass
 
-        # Returning history to Flutter
-        history = [{"question": c.question, "answer": c.answer} for c in chats]
-        return JsonResponse(history, safe=False)
 
-    except User.DoesNotExist:
-        return JsonResponse({'response': 'User not found'}, status=404)
-    except Exception as e:
-        return JsonResponse({'response': str(e)}, status=500)
 @csrf_exempt
 def public_send_complaint(request):
     complaint=request.POST['complaint']
@@ -2724,3 +2565,141 @@ def api_unified_poll(request):
 
     except Exception as e:
         return JsonResponse({'status': 'error', 'msg': str(e)})
+
+
+def public_chat_history(request):
+    try:
+        lid = request.GET.get('lid')
+        if not lid:
+            return JsonResponse({'response': 'User ID missing'}, status=400)
+
+        # Ensure we filter history ONLY for the logged-in User ID
+        usertable = User.objects.get(id=lid)
+        chats = Chatbot.objects.filter(LOGIN=usertable).order_by('id')
+
+        history = [{"question": c.question, "answer": c.answer} for c in chats]
+        return JsonResponse(history, safe=False)
+    except User.DoesNotExist:
+        return JsonResponse({'response': 'User not found'}, status=404)
+def public_chatbot_response(request):
+    if request.method != 'POST':
+        return JsonResponse({'response': 'Invalid request method'}, status=405)
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        user_message = data.get('message', '').strip()
+        lid = data.get('lid')
+        lat = data.get('lat')
+        lon = data.get('lon')
+        weather = data.get('weather')
+
+        # 🔹 Extracting details for Prediction
+        temp = weather.get('temperature_2m') if weather else "N/A"
+        wind = weather.get('wind_speed_10m') if weather else "N/A"
+        code = weather.get('weather_code') if weather else "N/A"
+
+        # 🔹 Enhanced AI Prompt for Prediction
+        system_prompt = f"""
+        You are a Disaster Management AI. 
+        Current Location: Latitude {lat}, Longitude {lon}
+        Current Weather Data:
+        - Temperature: {temp}°C
+        - Wind Speed: {wind} m/s
+        - Weather Code: {code} (WMO Standard)
+
+        User Question: {user_message}
+
+        TASK:
+        1. Answer the user's question.
+        2. Based on the weather data provided, predict any potential disaster risks 
+           (e.g., Heatwave if temp > 40°C, Storm if wind > 20m/s, Flood if heavy rain code).
+        3. Provide safety recommendations if a risk is detected.
+        """
+
+        # 🔹 Generate response from Gemini
+        try:
+            bot_response = model.generate_content(system_prompt).text.strip()
+        except Exception as ai_error:
+            bot_response = "I can't predict right now, but stay alert to local news."
+
+        # 🔹 Save to DB
+        user_obj = User.objects.get(id=lid)
+        Chatbot.objects.create(
+            LOGIN=user_obj,
+            date=datetime.date.today(),
+            question=user_message,
+            answer=bot_response,
+            latitude=str(lat),
+            longitude=str(lon)
+        )
+
+        return JsonResponse({'response': bot_response})
+
+    except Exception as e:
+        return JsonResponse({'response': 'Server Error'}, status=500)
+        
+        
+        
+
+def chatbot_response(request):
+    if request.method != 'POST':
+        return JsonResponse({'response': 'Invalid request method'}, status=405)
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        user_message = data.get('message', '').strip()
+        lid = data.get('lid')
+        lat = data.get('lat')
+        lon = data.get('lon')
+        weather = data.get('weather')
+
+        if not user_message or not lid:
+            return JsonResponse({'response': 'Message or user ID missing'}, status=400)
+
+        # 🔹 Prediction Parameters
+        temp = weather.get('temperature_2m') if weather else "Unknown"
+        wind = weather.get('wind_speed_10m') if weather else "Unknown"
+        code = weather.get('weather_code') if weather else "Unknown"
+
+        system_prompt = f"""
+        You are a Disaster Management AI. 
+        Target Location: {lat}, {lon}
+        Current Weather: {temp}°C, Wind: {wind} m/s, WMO Code: {code}.
+
+        TASK:
+        1. Answer: "{user_message}"
+        2. PREDICT DISASTERS: Analyze these numbers. If temp > 40C (Heatwave), 
+           if wind > 20m/s (Storm/Cyclone), if code is 65, 82, 95+ (Flood/Thunderstorm).
+        3. SAFETY: Give a brief warning if risk is high.
+        """
+
+        try:
+            bot_response = model.generate_content(system_prompt).text.strip()
+        except Exception:
+            bot_response = "Unable to predict at the moment. Please stay tuned to local alerts."
+
+        # 🔹 Save chat (Filters by lid to ensure privacy)
+        user_obj = User.objects.get(id=lid)
+        Chatbot.objects.create(
+            LOGIN=user_obj,
+            date=datetime.date.today(),
+            question=user_message,
+            answer=bot_response,
+            latitude=str(lat),
+            longitude=str(lon)
+        )
+
+        return JsonResponse({'response': bot_response})
+    except Exception as e:
+        return JsonResponse({'response': 'Server Error'}, status=500)
+
+def chat_history(request):
+    try:
+        lid = request.GET.get('lid')
+        usertable = User.objects.get(id=lid)
+        # Strictly filter by the user currently logged in
+        chats = Chatbot.objects.filter(LOGIN=usertable).order_by('id')
+        history = [{"question": c.question, "answer": c.answer} for c in chats]
+        return JsonResponse(history, safe=False)
+    except User.DoesNotExist:
+        return JsonResponse({'response': 'User not found'}, status=404)
