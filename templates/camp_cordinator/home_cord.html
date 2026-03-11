@@ -555,23 +555,15 @@
 
       .cards-grid {
         display: grid;
-        grid-template-columns: 1fr;
-        gap: 1rem;
-        align-items: start;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.2rem;
+        justify-content: center;
       }
 
       .cards-grid .card {
         width: 100%;
-        max-width: 350px;
       }
 
-      .cards-grid>a:nth-last-child(2) {
-        grid-column: 2;
-      }
-
-      .cards-grid>a:last-child {
-        grid-column: 3;
-      }
 
       /* responsive columns: 2 on sm, 3 on lg (breakpoints chosen to mimic Tailwind) */
       @media (min-width: 640px) {
