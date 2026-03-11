@@ -5,63 +5,236 @@
 
 {% block head_extra %}
 
-  <style>
-    :root {
-      --primary: #147efb;
-      --accent: #6c5ce7;
-      --glass: rgba(255,255,255,0.06);
-      --glass-border: rgba(255,255,255,0.10);
-      --bg: #f8fafc;
-      --card: #ffffff;
-      --muted: #6b7280;
+<style>
+  :root {
+    --primary: #147efb;
+    --accent: #6c5ce7;
+    --glass: rgba(255, 255, 255, 0.06);
+    --glass-border: rgba(255, 255, 255, 0.10);
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --muted: #6b7280;
+  }
+
+  /* Base */
+  body {
+    font-family: 'Public Sans', system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+    background: var(--bg);
+    color: #0f172a;
+  }
+
+  .container {
+    max-width: 1200px;
+  }
+
+  /* HERO */
+  .hero {
+    position: relative;
+    min-height: 48vh;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    border-radius: 12px;
+  }
+
+  .bg-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    z-index: 0;
+    filter: brightness(.45) saturate(.95);
+    border-radius: 12px;
+  }
+
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(180deg, rgba(2, 6, 23, 0.25) 0%, rgba(2, 6, 23, 0.55) 70%);
+    border-radius: 12px;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 3rem;
+  }
+
+  /* Cards grid */
+  .card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 1.25rem;
+    box-shadow: 0 6px 18px rgba(12, 18, 32, 0.06);
+    transition: transform .18s ease, box-shadow .18s ease;
+  }
+
+  .card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 18px 40px rgba(2, 6, 23, 0.12);
+  }
+
+  .card .icon {
+    height: 48px;
+    width: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(20, 126, 251, 0.12), rgba(108, 92, 231, 0.06));
+  }
+
+  /* Responsive grid tweaks */
+  .grid-auto {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .grid-auto {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+  }
 
-    /* Base */
-    body { font-family: 'Public Sans', system-ui, -apple-system, "Segoe UI", Roboto, Arial; background: var(--bg); color: #0f172a; }
-    .container { max-width: 1200px; }
+  @media (min-width: 1024px) {
+    .grid-auto {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
 
-    /* HERO */
-    .hero { position: relative; min-height: 48vh; display: flex; align-items: center; overflow: hidden; border-radius: 12px; }
-    .bg-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; z-index:0; filter: brightness(.45) saturate(.95); border-radius: 12px; }
-    .hero-overlay { position:absolute; inset:0; z-index:1; background: linear-gradient(180deg, rgba(2,6,23,0.25) 0%, rgba(2,6,23,0.55) 70%); border-radius: 12px; }
-    .hero-content { position:relative; z-index:2; padding: 3rem; }
+  /* Alert & support */
+  .alerts-bar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(2, 6, 23, 0.12);
+  }
 
-    /* Cards grid */
-    .card { background: var(--card); border-radius: 14px; padding: 1.25rem; box-shadow: 0 6px 18px rgba(12,18,32,0.06); transition: transform .18s ease, box-shadow .18s ease; }
-    .card:hover { transform: translateY(-6px); box-shadow: 0 18px 40px rgba(2,6,23,0.12); }
-    .card .icon { height:48px; width:48px; display:inline-flex; align-items:center; justify-content:center; border-radius:10px; background: linear-gradient(180deg, rgba(20,126,251,0.12), rgba(108,92,231,0.06)); }
+  .alerts-count {
+    background: rgba(255, 255, 255, 0.12);
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    font-weight: 700;
+  }
 
-    /* Responsive grid tweaks */
-    .grid-auto { display:grid; grid-template-columns: repeat(1, minmax(0,1fr)); gap:1rem; }
-    @media (min-width: 640px) { .grid-auto { grid-template-columns: repeat(2, minmax(0,1fr)); } }
-    @media (min-width: 1024px) { .grid-auto { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+  /* Floating support button */
+  .fab {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 12px 30px rgba(2, 6, 23, 0.18);
+    cursor: pointer;
+    z-index: 60;
+  }
 
-    /* Alert & support */
-    .alerts-bar { position: sticky; top: 0; z-index: 50; display:flex; align-items:center; gap:0.75rem; background: linear-gradient(90deg,var(--primary),var(--accent)); color:white; padding:0.5rem 1rem; border-radius:8px; box-shadow: 0 6px 18px rgba(2,6,23,0.12); }
-    .alerts-count { background: rgba(255,255,255,0.12); padding: 0.35rem 0.6rem; border-radius: 999px; font-weight:700; }
+  .fab .dot {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    height: 10px;
+    width: 10px;
+    border-radius: 50%;
+    background: #ff3b30;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+  }
 
-    /* Floating support button */
-    .fab { position: fixed; right: 20px; bottom: 20px; width:56px; height:56px; border-radius: 999px; display:flex; align-items:center; justify-content:center; box-shadow: 0 12px 30px rgba(2,6,23,0.18); cursor:pointer; z-index:60; }
-    .fab .dot { position:absolute; right:8px; top:8px; height:10px; width:10px; border-radius:50%; background: #ff3b30; box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+  /* Compact alert list panel */
+  .alerts-panel {
+    position: fixed;
+    right: 20px;
+    bottom: 90px;
+    width: 360px;
+    max-width: calc(100% - 48px);
+    background: var(--card);
+    border-radius: 12px;
+    box-shadow: 0 18px 32px rgba(2, 6, 23, 0.16);
+    overflow: hidden;
+    z-index: 59;
+    display: none;
+  }
 
-    /* Compact alert list panel */
-    .alerts-panel { position: fixed; right: 20px; bottom: 90px; width: 360px; max-width: calc(100% - 48px); background: var(--card); border-radius: 12px; box-shadow: 0 18px 32px rgba(2,6,23,0.16); overflow: hidden; z-index: 59; display:none; }
-    .alerts-panel.open { display:block; }
-    .alerts-panel header { padding: 0.75rem 1rem; display:flex; align-items:center; justify-content:space-between; border-bottom: 1px solid #f1f5f9; }
-    .alerts-list { max-height: 320px; overflow:auto; padding:0.5rem; }
-    .alert-item { display:flex; gap:0.75rem; padding:0.65rem; border-radius:8px; align-items:flex-start; }
-    .alert-item.unread { background: linear-gradient(90deg, rgba(20,126,251,0.06), rgba(108,92,231,0.03)); }
-    .alert-item p { margin:0; font-size:0.95rem; color: #0f172a; }
-    .alert-meta { font-size:0.78rem; color:var(--muted); }
+  .alerts-panel.open {
+    display: block;
+  }
 
-    /* Toast (quick notify) */
-    .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 100px; background: #0f172a; color: white; padding: 0.6rem 1rem; border-radius: 8px; box-shadow: 0 12px 30px rgba(2,6,23,0.18); display:none; z-index:70; }
-    .toast.show { display:block; }
+  .alerts-panel header {
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #f1f5f9;
+  }
 
-    /* Utility */
-    .muted { color: var(--muted); }
+  .alerts-list {
+    max-height: 320px;
+    overflow: auto;
+    padding: 0.5rem;
+  }
 
-  </style>
+  .alert-item {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.65rem;
+    border-radius: 8px;
+    align-items: flex-start;
+  }
+
+  .alert-item.unread {
+    background: linear-gradient(90deg, rgba(20, 126, 251, 0.06), rgba(108, 92, 231, 0.03));
+  }
+
+  .alert-item p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #0f172a;
+  }
+
+  .alert-meta {
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  /* Toast (quick notify) */
+  .toast {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 100px;
+    background: #0f172a;
+    color: white;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    box-shadow: 0 12px 30px rgba(2, 6, 23, 0.18);
+    display: none;
+    z-index: 70;
+  }
+
+  .toast.show {
+    display: block;
+  }
+
+  /* Utility */
+  .muted {
+    color: var(--muted);
+  }
+</style>
 <style>
   .alerts-bar button.card,
   .alerts-bar a.card {
@@ -83,88 +256,92 @@
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
+
   .cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.5rem;
-  margin-top: 1rem;
-}
-
-.dash-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  background: #ffffff;
-  border-radius: 1rem;
-  padding: 1.5rem 1rem;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-  transition: all 0.3s ease;
-  min-height: 230px;
-  text-decoration: none;
-  color: inherit;
-  position: relative;
-  overflow: hidden;
-}
-
-.dash-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 8px 22px rgba(0,0,0,0.10);
-}
-
-.dash-icon {
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
-  width: 54px;
-  height: 54px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  margin-bottom: 1rem;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-}
-
-.dash-card h4 {
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: #0f172a;
-  margin-bottom: 0.4rem;
-}
-
-.dash-card p {
-  font-size: 0.9rem;
-  color: var(--muted);
-  margin-bottom: 1rem;
-  line-height: 1.4;
-}
-
-.stat {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-weight: 600;
-  font-size: 1rem;
-  background: rgba(20, 126, 251, 0.1);
-  color: var(--primary);
-  border-radius: 999px;
-  padding: 0.25rem 0.75rem;
-}
-
-.stat small {
-  font-weight: 400;
-  font-size: 0.8rem;
-  color: #6b7280;
-}
-
-@media (max-width: 640px) {
-  .dash-card {
-    min-height: 200px;
-    padding: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
   }
-  .dash-icon { width: 48px; height: 48px; }
-}
 
+  .dash-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: #ffffff;
+    border-radius: 1rem;
+    padding: 1.5rem 1rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+    min-height: 230px;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .dash-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.10);
+  }
+
+  .dash-icon {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+    width: 54px;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .dash-card h4 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 0.4rem;
+  }
+
+  .dash-card p {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    line-height: 1.4;
+  }
+
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 600;
+    font-size: 1rem;
+    background: rgba(20, 126, 251, 0.1);
+    color: var(--primary);
+    border-radius: 999px;
+    padding: 0.25rem 0.75rem;
+  }
+
+  .stat small {
+    font-weight: 400;
+    font-size: 0.8rem;
+    color: #6b7280;
+  }
+
+  @media (max-width: 640px) {
+    .dash-card {
+      min-height: 200px;
+      padding: 1rem;
+    }
+
+    .dash-icon {
+      width: 48px;
+      height: 48px;
+    }
+  }
 </style>
 
 
@@ -175,11 +352,12 @@
   <div class="container mx-auto px-4">
 
     <!-- Alerts bar (sticky) -->
-    
+
 
     <!-- HERO -->
     <section class="hero mb-6">
-      <img class="bg-img" src="{% static 'images/disbg.png' %}" alt="Camp coordinator background" onerror="this.style.display='none'">
+      <img class="bg-img" src="{% static 'images/disbg.png' %}" alt="Camp coordinator background"
+        onerror="this.style.display='none'">
       <div class="hero-overlay" aria-hidden="true"></div>
 
       <div class="hero-content text-white">
@@ -189,7 +367,9 @@
           </div>
           <div>
             <h2 class="text-3xl md:text-4xl lg:text-5xl font-extrabold leading-tight">Coordinator Dashboard</h2>
-            <p class="mt-2 text-sm md:text-base text-slate-100/90 max-w-2xl">Manage camps, supplies, volunteers and provide support efficiently in disaster response operations. Quick access to latest alerts and support tools.</p>
+            <p class="mt-2 text-sm md:text-base text-slate-100/90 max-w-2xl">Manage camps, supplies, volunteers and
+              provide support efficiently in disaster response operations. Quick access to latest alerts and support
+              tools.</p>
           </div>
         </div>
 
@@ -221,155 +401,262 @@
     </section>
 
     <!-- CARDS GRID -->
-   <!-- Dashboard Cards (converted to reference layout) -->
-<section id="dashboardCards" class="dashboard-section">
-  <div class="container">
-    <div class="header-row">
-      <div>
-        <h3 class="title">Quick Actions</h3>
-        <p class="subtitle">Fast links for camp & volunteer management, maps, reports and admin tasks.</p>
-      </div>
-      <div class="tip">Tip: keyboard <kbd class="kbd">Tab</kbd> to navigate.</div>
-    </div>
-
-    <div class="cards-grid">
-      <a href="/myapp/stock_management/" class="card" aria-labelledby="stockTitle" role="link">
-        <div class="card-top">
-          <div class="icon-pill"><span class="material-icons" aria-hidden="true">inventory_2</span></div>
+    <!-- Dashboard Cards (converted to reference layout) -->
+    <section id="dashboardCards" class="dashboard-section">
+      <div class="container">
+        <div class="header-row">
           <div>
-            <h4 id="stockTitle" class="card-title">Stock Management</h4>
-            <p class="card-desc">Track and update camp resources and supplies.</p>
+            <h3 class="title">Quick Actions</h3>
+            <p class="subtitle">Fast links for camp & volunteer management, maps, reports and admin tasks.</p>
           </div>
+          <div class="tip">Tip: keyboard <kbd class="kbd">Tab</kbd> to navigate.</div>
         </div>
-        <div class="card-meta"><span id="cardStockCount">—</span> <small>items</small></div>
-      </a>
 
-      <a href="/myapp/member_register/" class="card" aria-labelledby="memberTitle" role="link">
-        <div class="card-top">
-          <div class="icon-pill"><span class="material-icons" aria-hidden="true">group_add</span></div>
-          <div>
-            <h4 id="memberTitle" class="card-title">Member Register</h4>
-            <p class="card-desc">Manage and register camp members efficiently.</p>
-          </div>
-        </div>
-        <div class="card-meta"><span id="cardVolunteers">—</span> <small>active</small></div>
-      </a>
-
-      <a href="/myapp/manage_needs/" class="card" aria-labelledby="needsTitle" role="link">
-        <div class="card-top">
-          <div class="icon-pill"><span class="material-icons" aria-hidden="true">playlist_add_check</span></div>
-          <div>
-            <h4 id="needsTitle" class="card-title">Manage Needs</h4>
-            <p class="card-desc">Record and fulfill essential camp requirements.</p>
-          </div>
-        </div>
-        <div class="card-meta"><span id="cardNeeds">—</span> <small>pending</small></div>
-      </a>
-
-      <a href="/myapp/medical_support/" class="card" aria-labelledby="medTitle" role="link">
-        <div class="card-top">
-          <div class="icon-pill"><span class="material-icons" aria-hidden="true">medical_services</span></div>
-          <div>
-            <h4 id="medTitle" class="card-title">Medical Support</h4>
-            <p class="card-desc">Provide and track medical help and first aid.</p>
-          </div>
-        </div>
-        <div class="card-meta"><span id="cardMedical">—</span> <small>cases</small></div>
-      </a>
-
-      <a href="/myapp/view_user_report/" class="card" aria-labelledby="reportTitle" role="link">
-        <div class="card-top">
-          <div class="icon-pill"><span class="material-icons" aria-hidden="true">bar_chart</span></div>
-          <div>
-            <h4 id="reportTitle" class="card-title">User Reports</h4>
-            <p class="card-desc">Analyze recent user submissions and alerts.</p>
-          </div>
-        </div>
-        <div class="card-meta"><span id="cardReports">—</span> <small>reports</small></div>
-      </a>
-
-      <a href="/myapp/change_password/" class="card" aria-labelledby="settingsTitle" role="link">
-        <div class="card-top">
-          <div class="icon-pill"><span class="material-icons" aria-hidden="true">settings</span></div>
-          <div>
-            <h4 id="settingsTitle" class="card-title">Settings</h4>
-            <p class="card-desc">Configure preferences and access controls.</p>
-          </div>
-        </div>
-        <div class="card-meta"><span>✓</span> <small>secure</small></div>
-      </a>
-
-      <a href="/myapp/coordinator_guidelines/" class="card" aria-labelledby="guidelinesTitle" role="link">
-        <div class="card-top">
-          <div class="icon-pill"><span class="material-icons" aria-hidden="true">rule</span></div>
-          <div>
-            <h4 id="guidelinesTitle" class="card-title">Guidelines</h4>
-            <p class="card-desc">View guidelines provided by the admin.</p>
-          </div>
-        </div>
-        <div class="card-meta"><span id="cardGuidelines">{{ guid_count }}</span> <small>guidelines</small></div>
-      </a>
-
-      <!-- Add more cards here if you need -->
-
-      <!-- Full width News / Latest card that spans columns on larger screens -->
-      <div class="card-news-wrapper">
-        <a href="/myapp/news_report/" class="card card-news" aria-labelledby="newsTitle" role="link">
-          <div class="card-top">
-            <div class="icon-pill"><span class="material-icons" aria-hidden="true">article</span></div>
-            <div>
-              <h4 id="newsTitle" class="card-title">View News</h4>
-              <p class="card-desc">Stay updated with disaster-related news & announcements.</p>
+        <div class="cards-grid">
+          <a href="/myapp/stock_management/" class="card" aria-labelledby="stockTitle" role="link">
+            <div class="card-top">
+              <div class="icon-pill"><span class="material-icons" aria-hidden="true">inventory_2</span></div>
+              <div>
+                <h4 id="stockTitle" class="card-title">Stock Management</h4>
+                <p class="card-desc">Track and update camp resources and supplies.</p>
+              </div>
             </div>
-          </div>
-          <div class="card-meta">Latest updates · <span class="muted">Just now</span></div>
-        </a>
+            <div class="card-meta"><span id="cardStockCount">—</span> <small>items</small></div>
+          </a>
+
+          <a href="/myapp/member_register/" class="card" aria-labelledby="memberTitle" role="link">
+            <div class="card-top">
+              <div class="icon-pill"><span class="material-icons" aria-hidden="true">group_add</span></div>
+              <div>
+                <h4 id="memberTitle" class="card-title">Member Register</h4>
+                <p class="card-desc">Manage and register camp members efficiently.</p>
+              </div>
+            </div>
+            <div class="card-meta"><span id="cardVolunteers">—</span> <small>active</small></div>
+          </a>
+
+          <a href="/myapp/manage_needs/" class="card" aria-labelledby="needsTitle" role="link">
+            <div class="card-top">
+              <div class="icon-pill"><span class="material-icons" aria-hidden="true">playlist_add_check</span></div>
+              <div>
+                <h4 id="needsTitle" class="card-title">Manage Needs</h4>
+                <p class="card-desc">Record and fulfill essential camp requirements.</p>
+              </div>
+            </div>
+            <div class="card-meta"><span id="cardNeeds">—</span> <small>pending</small></div>
+          </a>
+
+          <a href="/myapp/medical_support/" class="card" aria-labelledby="medTitle" role="link">
+            <div class="card-top">
+              <div class="icon-pill"><span class="material-icons" aria-hidden="true">medical_services</span></div>
+              <div>
+                <h4 id="medTitle" class="card-title">Medical Support</h4>
+                <p class="card-desc">Provide and track medical help and first aid.</p>
+              </div>
+            </div>
+            <div class="card-meta"><span id="cardMedical">—</span> <small>cases</small></div>
+          </a>
+
+          <a href="/myapp/view_user_report/" class="card" aria-labelledby="reportTitle" role="link">
+            <div class="card-top">
+              <div class="icon-pill"><span class="material-icons" aria-hidden="true">bar_chart</span></div>
+              <div>
+                <h4 id="reportTitle" class="card-title">User Reports</h4>
+                <p class="card-desc">Analyze recent user submissions and alerts.</p>
+              </div>
+            </div>
+            <div class="card-meta"><span id="cardReports">—</span> <small>reports</small></div>
+          </a>
+
+          <a href="/myapp/change_password/" class="card" aria-labelledby="settingsTitle" role="link">
+            <div class="card-top">
+              <div class="icon-pill"><span class="material-icons" aria-hidden="true">settings</span></div>
+              <div>
+                <h4 id="settingsTitle" class="card-title">Settings</h4>
+                <p class="card-desc">Configure preferences and access controls.</p>
+              </div>
+            </div>
+            <div class="card-meta"><span>✓</span> <small>secure</small></div>
+          </a>
+
+          <a href="/myapp/coordinator_guidelines/" class="card" aria-labelledby="guidelinesTitle" role="link">
+            <div class="card-top">
+              <div class="icon-pill"><span class="material-icons" aria-hidden="true">rule</span></div>
+              <div>
+                <h4 id="guidelinesTitle" class="card-title">Guidelines</h4>
+                <p class="card-desc">View guidelines provided by the admin.</p>
+              </div>
+            </div>
+            <div class="card-meta"><span id="cardGuidelines">{{ guid_count }}</span> <small>guidelines</small></div>
+          </a>
+
+          <!-- Add more cards here if you need -->
+
+          <!-- Full width News / Latest card that spans columns on larger screens -->
+          <a href="/myapp/news_report/" class="card card-news" aria-labelledby="newsTitle" role="link">
+            <div class="card-top">
+              <div class="icon-pill"><span class="material-icons" aria-hidden="true">article</span></div>
+              <div>
+                <h4 id="newsTitle" class="card-title">View News</h4>
+                <p class="card-desc">Stay updated with disaster-related news & announcements.</p>
+              </div>
+            </div>
+            <div class="card-meta">Latest updates · <span class="muted">Just now</span></div>
+          </a>
+
+        </div>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- Styles (put in your stylesheet or inside a <style> block) -->
-<style>
-  
-  .dashboard-section { padding: 2.5rem 1rem; background: var(--bg); color: #0f172a; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
-  
+    <!-- Styles (put in your stylesheet or inside a <style> block) -->
+    <style>
+      .dashboard-section {
+        padding: 2.5rem 1rem;
+        background: var(--bg);
+        color: #0f172a;
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      }
 
-  .header-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.5rem; }
-  .title { font-size:1.25rem; margin:0; font-weight:700; color:#0f172a; }
-  .subtitle { margin:0.25rem 0 0; color:var(--muted); font-size:0.9rem; }
-  .tip { color: #475569; font-size:0.9rem; }
-  .kbd { background:#fff; border:1px solid #e6e9ef; padding:0.15rem 0.45rem; border-radius:6px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; font-size:0.8rem; }
 
-  .cards-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; align-items:start; }
-  /* responsive columns: 2 on sm, 3 on lg (breakpoints chosen to mimic Tailwind) */
-  @media (min-width: 640px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (min-width: 1024px) { .cards-grid { grid-template-columns: repeat(3, 1fr); } }
+      .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
 
-  .card { display:flex; flex-direction:column; justify-content:space-between; background: var(--card); border-radius: var(--radius); padding: 1.15rem; box-shadow: var(--shadow); text-decoration:none; color: inherit; transition: transform .12s ease, box-shadow .12s ease; outline: none; }
-  .card:focus { box-shadow: var(--shadow-hover); transform: translateY(-4px); border: 1px solid rgba(20,126,251,0.12); }
-  .card:hover { box-shadow: var(--shadow-hover); transform: translateY(-3px); }
+      .title {
+        font-size: 1.25rem;
+        margin: 0;
+        font-weight: 700;
+        color: #0f172a;
+      }
 
-  .card-top { display:flex; gap:0.9rem; align-items:flex-start; }
-  .icon-pill { height:48px; width:48px; display:flex; align-items:center; justify-content:center; border-radius:10px; background: color-mix(in srgb, var(--primary) 8%, white); color:var(--primary); font-size:22px; flex:0 0 48px; }
-  .card-title { margin:0; font-size:1rem; font-weight:600; color:#0f172a; }
-  .card-desc { margin:0.2rem 0 0; color:var(--muted); font-size:0.9rem; }
+      .subtitle {
+        margin: 0.25rem 0 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
 
-  .card-meta { margin-top:0.9rem; font-size:0.8rem; color: #64748b; }
-  .card-meta small { color: #94a3b8; margin-left:0.3rem; }
+      .tip {
+        color: #475569;
+        font-size: 0.9rem;
+      }
 
-  /* news card wrapper spans full width on small screens, becomes a wide card across grid on larger */
-  .card-news-wrapper { grid-column: 1 / -1; display:flex; justify-content:center; }
-  @media (min-width: 640px) { .card-news-wrapper { grid-column: 1 / -1; } }
-  @media (min-width: 1024px) { /* make the news card span all three columns visually centered with a fixed width */
-    .card-news-wrapper { grid-column: 1 / -1; }
-    .card-news { max-width: 800px; width:100%; }
-  }
+      .kbd {
+        background: #fff;
+        border: 1px solid #e6e9ef;
+        padding: 0.15rem 0.45rem;
+        border-radius: 6px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+        font-size: 0.8rem;
+      }
 
-  /* small helpers */
-  .muted { color:var(--muted); }
-  .inline-badge { display:inline-flex; align-items:center; padding:0.15rem 0.5rem; border-radius:999px; font-size:0.75rem; }
-</style>
+      .cards-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        align-items: start;
+      }
+
+      /* responsive columns: 2 on sm, 3 on lg (breakpoints chosen to mimic Tailwind) */
+      @media (min-width: 640px) {
+        .cards-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      @media (min-width: 1024px) {
+        .cards-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+
+      .card {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        background: var(--card);
+        border-radius: var(--radius);
+        padding: 1.15rem;
+        box-shadow: var(--shadow);
+        text-decoration: none;
+        color: inherit;
+        transition: transform .12s ease, box-shadow .12s ease;
+        outline: none;
+      }
+
+      .card:focus {
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-4px);
+        border: 1px solid rgba(20, 126, 251, 0.12);
+      }
+
+      .card:hover {
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-3px);
+      }
+
+      .card-top {
+        display: flex;
+        gap: 0.9rem;
+        align-items: flex-start;
+      }
+
+      .icon-pill {
+        height: 48px;
+        width: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--primary) 8%, white);
+        color: var(--primary);
+        font-size: 22px;
+        flex: 0 0 48px;
+      }
+
+      .card-title {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #0f172a;
+      }
+
+      .card-desc {
+        margin: 0.2rem 0 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .card-meta {
+        margin-top: 0.9rem;
+        font-size: 0.8rem;
+        color: #64748b;
+      }
+
+      .card-meta small {
+        color: #94a3b8;
+        margin-left: 0.3rem;
+      }
+
+      /* news card wrapper spans full width on small screens, becomes a wide card across grid on larger */
+
+
+      /* small helpers */
+      .muted {
+        color: var(--muted);
+      }
+
+      .inline-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+      }
+    </style>
 
 
 
@@ -404,31 +691,31 @@
 <script>
 
   try {
-  const sres = await fetch('/myapp/api/stats/', { credentials: 'same-origin' });
-  if (sres.ok) {
-    const s = await sres.json();
-    // HERO
-    document.getElementById('statStock').textContent = s.stock_count ?? '—';
-    document.getElementById('statVol').textContent = s.volunteers ?? '—';
-    document.getElementById('statMed').textContent = s.pending_medical ?? '—';
-    // CARDS
-    updateStat('cardStockCount', s.stock_count, 10, 3);
-    updateStat('cardVolunteers', s.volunteers, 10, 3);
-    updateStat('cardNeeds', s.pending_needs, 5, 2);
-    updateStat('cardMedical', s.pending_medical, 5, 2);
-    updateStat('cardReports', s.new_reports, 5, 2);
-  }
-} catch(e){}
+    const sres = await fetch('/myapp/api/stats/', { credentials: 'same-origin' });
+    if (sres.ok) {
+      const s = await sres.json();
+      // HERO
+      document.getElementById('statStock').textContent = s.stock_count ?? '—';
+      document.getElementById('statVol').textContent = s.volunteers ?? '—';
+      document.getElementById('statMed').textContent = s.pending_medical ?? '—';
+      // CARDS
+      updateStat('cardStockCount', s.stock_count, 10, 3);
+      updateStat('cardVolunteers', s.volunteers, 10, 3);
+      updateStat('cardNeeds', s.pending_needs, 5, 2);
+      updateStat('cardMedical', s.pending_medical, 5, 2);
+      updateStat('cardReports', s.new_reports, 5, 2);
+    }
+  } catch (e) { }
 
-function updateStat(id, val, warnThreshold, criticalThreshold) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const num = parseInt(val || 0);
-  el.textContent = num;
-  el.classList.remove('warn', 'danger');
-  if (num >= warnThreshold) el.classList.add('warn');
-  if (num >= criticalThreshold * 2) el.classList.add('danger');
-}
+  function updateStat(id, val, warnThreshold, criticalThreshold) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const num = parseInt(val || 0);
+    el.textContent = num;
+    el.classList.remove('warn', 'danger');
+    if (num >= warnThreshold) el.classList.add('warn');
+    if (num >= criticalThreshold * 2) el.classList.add('danger');
+  }
 
   // Basic client-side polling for alerts (adjust endpoint as needed)
   const ALERTS_ENDPOINT = '/myapp/api/alerts/';  // Implement this endpoint to return JSON list
@@ -471,18 +758,18 @@ function updateStat(id, val, warnThreshold, criticalThreshold) {
     });
   }
 
-  function escapeHtml(s){ if(!s) return ''; return s.replace(/[&<>"]+/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function escapeHtml(s) { if (!s) return ''; return s.replace(/[&<>"]+/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
-  function openAlertDetail(a){
+  function openAlertDetail(a) {
     // Navigate to detailed report or show modal (hook to your existing view)
     window.location.href = '/myapp/alert/' + a.id + '/';
   }
 
   // Toast helper
-  function showToast(msg){
+  function showToast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
-    setTimeout(()=> t.classList.remove('show'), 3500);
+    setTimeout(() => t.classList.remove('show'), 3500);
   }
 
   // Polling + notification when new unread alerts arrive
@@ -508,18 +795,18 @@ function updateStat(id, val, warnThreshold, criticalThreshold) {
   const refreshBtn = document.getElementById('refreshAlertsBtn');
   const markAllBtn = document.getElementById('markAllReadBtn');
 
-  fab.addEventListener('click', ()=> {
+  fab.addEventListener('click', () => {
     panel.classList.toggle('open');
     panel.setAttribute('aria-hidden', panel.classList.contains('open') ? 'false' : 'true');
   });
-  closeBtn.addEventListener('click', ()=> panel.classList.remove('open'));
+  closeBtn.addEventListener('click', () => panel.classList.remove('open'));
   refreshBtn.addEventListener('click', fetchAlerts);
 
-  markAllBtn.addEventListener('click', async ()=>{
+  markAllBtn.addEventListener('click', async () => {
     try {
       const res = await fetch('/myapp/api/alerts/mark_all_read/', { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
       if (res.ok) fetchAlerts();
-    } catch(e){ console.warn(e); }
+    } catch (e) { console.warn(e); }
   });
 
   function getCookie(name) {
@@ -528,7 +815,7 @@ function updateStat(id, val, warnThreshold, criticalThreshold) {
   }
 
   // Initial load
-  document.addEventListener('DOMContentLoaded', async ()=>{
+  document.addEventListener('DOMContentLoaded', async () => {
     // fetch quick stats endpoint (optional)
     try {
       const sres = await fetch('/myapp/api/stats/', { credentials: 'same-origin' });
@@ -538,7 +825,7 @@ function updateStat(id, val, warnThreshold, criticalThreshold) {
         document.getElementById('statVol').textContent = s.volunteers ?? '—';
         document.getElementById('statMed').textContent = s.pending_medical ?? '—';
       }
-    } catch(e){}
+    } catch (e) { }
 
     await fetchAlerts();
     // start polling every 20 seconds
@@ -549,7 +836,7 @@ function updateStat(id, val, warnThreshold, criticalThreshold) {
 
 <script>
   // set year element if present
-  try { document.getElementById('year').textContent = new Date().getFullYear(); } catch(e){}
+  try { document.getElementById('year').textContent = new Date().getFullYear(); } catch (e) { }
 </script>
 
 {% endblock %}
