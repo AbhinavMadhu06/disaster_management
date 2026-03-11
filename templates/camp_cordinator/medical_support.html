@@ -117,6 +117,7 @@
                   <td class="px-4 py-3">{{ forloop.counter }}</td>
                   <td class="px-4 py-3">{{ med.medicine }}</td>
                   <td class="px-4 py-3 text-right">{{ med.quantity|default:"—" }}</td>
+                  <!--
                   <td class="px-4 py-3 text-center">
                     {% if med.status|lower == 'fulfilled' %}
                       <span class="px-2 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Fulfilled</span>
@@ -124,6 +125,7 @@
                       <span class="px-2 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">Pending</span>
                     {% endif %}
                   </td>
+                  -->
                   <td class="px-4 py-3 text-center">
                     {# Non-AJAX delete form. Button opens modal. #}
                     <form action="{% url 'medical_support_delete' med.id %}" method="post" class="inline deleteForm" style="display:inline;">

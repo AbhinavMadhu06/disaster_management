@@ -675,8 +675,14 @@ def reject_news_reporter(request,id):
     a.save()
     return redirect('/myapp/admin_view_news_reporter/')
 
-
-
+@login_required
+def coordinator_guidelines(request):
+    if not request.user.groups.filter(name='cordinator').exists():
+            logout(request)
+            return redirect('/myapp/login/')
+    coordinator = get_object_or_404(Coordinator, login_id=request.user)
+    guidelines = Guideline.objects.filter(coordinator=coordinator)
+    return render(request, 'camp_cordinator/guid_cord.html', {'guidelines': guidelines})
 
 def my_coordinator_profile(request):
     if not request.user.groups.filter(name='cordinator').exists():

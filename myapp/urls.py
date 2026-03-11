@@ -45,6 +45,7 @@ urlpatterns=[
 
 
     path('cordinator_home/', views.cordinator_home),
+    path('coordinator_guidelines/', views.coordinator_guidelines, name='coordinator_guidelines'),
      path('cordinator_profile/', views.my_coordinator_profile, name='my_coordinator_profile'),
     path('medical_support/', views.medical_support,name='medical_support'),
     path('add_medical_support/', views.medical_support_post,name='medical_support_post'),
